@@ -26,6 +26,7 @@ import {
 import { NewsShareButton } from "@/components/news-share-button";
 import { NewsStickyTitle } from "@/components/news-sticky-title";
 import { getTagLabel, getTagStyle } from "@/components/news-card";
+import { safeUrl } from "@/lib/safe-url";
 
 interface PageProps {
   params: Promise<{ locale: string; slug: string }>;
@@ -136,7 +137,7 @@ export default async function NewsDetailPage({ params }: PageProps) {
                   {post.attachments.map((doc) => (
                     <a
                       key={doc.id}
-                      href={doc.fileUrl ?? "#"}
+                      href={safeUrl(doc.fileUrl) ?? "#"}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="group flex items-center gap-3 rounded-lg border border-border bg-card p-4 transition-shadow hover:shadow-md"

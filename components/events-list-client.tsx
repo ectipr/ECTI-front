@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import type { ECTIEvent, EventStatus, EventType } from "@/lib/events-data";
 import type { Dictionary, Locale } from "@/lib/i18n";
+import { safeUrl } from "@/lib/safe-url";
 
 interface EventsListClientProps {
   locale: Locale;
@@ -393,6 +394,9 @@ function EventCard({
   const description = event.description;
 
   const deadlinesToShow = event.deadlines.slice(0, 3);
+  // Editor-supplied and unvalidated in the Strapi schema — activity.register_url
+  // has no regex on it, so the scheme is checked here.
+  const registerUrl = safeUrl(event.register_url);
 
   return (
     <Card className="group border-border transition-shadow hover:shadow-lg">
@@ -443,9 +447,9 @@ function EventCard({
         )}
 
         {/* Actions */}
-        {event.register_url && (
+        {registerUrl && (
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            <a href={event.register_url} target="_blank" rel="noopener noreferrer">
+            <a href={registerUrl} target="_blank" rel="noopener noreferrer">
               <Button variant="outline" size="sm" className="gap-1.5">
                 {dict.events.btnDetails}
                 <ArrowRight className="h-3.5 w-3.5" />

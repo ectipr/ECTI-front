@@ -4,6 +4,7 @@ import { Separator } from "@/components/ui/separator";
 import { getFeaturedEvents } from "@/lib/events-data";
 import type { FeaturedEvent } from "@/lib/events-data";
 import type { Dictionary, Locale } from "@/lib/i18n";
+import { safeUrl } from "@/lib/safe-url";
 
 interface FeaturedEventSectionProps {
   locale: Locale;
@@ -75,13 +76,13 @@ function FeaturedEventCard({
 
           {/* External event link — like the events page, the button is hidden
               entirely when the event has no link set. */}
-          {event.registerUrl && (
+          {safeUrl(event.registerUrl) && (
             <>
               <Separator />
 
               <div className="flex flex-wrap gap-3">
                 <a
-                  href={event.registerUrl}
+                  href={safeUrl(event.registerUrl)}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
