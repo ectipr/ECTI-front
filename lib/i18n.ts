@@ -285,6 +285,9 @@ const dictionaries = {
       formSend: "ส่งข้อความ",
       formSuccess: "ได้รับข้อความของคุณแล้ว ขอบคุณที่ติดต่อ ECTI",
       formError: "ส่งข้อความไม่สำเร็จ กรุณาลองใหม่อีกครั้ง หรือติดต่อทางอีเมลโดยตรง",
+      formTooMany:
+        "คุณส่งข้อความบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่อีกครั้ง",
+      formInvalid: "กรุณากรอกข้อมูลให้ครบทุกช่อง และไม่ยาวเกินกำหนด",
       mapTitle: "ตำแหน่งที่ตั้ง",
       socialTitle: "ติดตามเราได้ที่",
     },
@@ -628,6 +631,8 @@ const dictionaries = {
       formSuccess: "We've received your message. Thank you for contacting ECTI",
       formError:
         "Couldn't send your message. Please try again, or email us directly.",
+      formTooMany: "Too many messages. Please wait a moment and try again.",
+      formInvalid: "Please fill in every field, and keep them within the limits.",
       mapTitle: "Location",
       socialTitle: "Follow Us",
     },

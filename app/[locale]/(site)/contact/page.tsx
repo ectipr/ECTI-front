@@ -137,6 +137,8 @@ export default async function ContactPage({ params }: PageProps) {
               formSend: dict.contact.formSend,
               formSuccess: dict.contact.formSuccess,
               formError: dict.contact.formError,
+              formTooMany: dict.contact.formTooMany,
+              formInvalid: dict.contact.formInvalid,
             }}
           />
 
