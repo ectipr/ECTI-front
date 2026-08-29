@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { after } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
+import { sameOrigin, clientIp, readJsonBody } from "@/lib/request-guards";
 
 // Newsletter signup → Brevo, using Brevo's double opt-in endpoint: it stores the
 // address as *unconfirmed* and mails a confirmation link, and only a click on
@@ -8,6 +10,9 @@ import { rateLimit } from "@/lib/rate-limit";
 // under PDPA. Brevo also appends the unsubscribe link to every campaign.
 //
 // The API key stays server-side — this route is the only thing that sees it.
+//
+// The route answers the same way for every address it accepts, and does the
+// Brevo work after responding. See the note above `respondAccepted` for why.
 
 const BREVO_API = "https://api.brevo.com/v3";
 
@@ -29,43 +34,31 @@ const PER_IP_WINDOW = HOUR;
 const PER_EMAIL_LIMIT = 3;
 const PER_EMAIL_WINDOW = 24 * HOUR;
 
-/**
- * Best-effort client address. Vercel puts the real one first in
- * x-forwarded-for; locally there is no proxy and every caller collapses into
- * one "unknown" bucket, which is fine — the limit still holds in dev, it just
- * holds for everyone at once.
- */
-function clientIp(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return request.headers.get("x-real-ip") ?? "unknown";
-}
-
-/**
- * Rejects anything that didn't come from our own pages.
- *
- * Browsers send Origin on every POST, so a real submission always has one that
- * matches the host serving it. A script pointed straight at this route
- * generally doesn't — cheap to check, and it doesn't need a list of allowed
- * hosts to maintain, so preview deploys and localhost work unchanged.
- */
-function sameOrigin(request: Request): boolean {
-  const origin = request.headers.get("origin");
-  if (!origin) return false;
-
-  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
-  try {
-    return new URL(origin).host === host;
-  } catch {
-    return false;
-  }
-}
+/** A signup body is an email and a locale; nothing here needs room to grow. */
+const MAX_BODY_BYTES = 4 * 1024;
 
 function tooManyRequests(retryAfter: number) {
   return NextResponse.json(
     { error: "rate_limited" },
     { status: 429, headers: { "Retry-After": String(retryAfter) } }
   );
+}
+
+/**
+ * The single answer for every address we accept.
+ *
+ * This used to return 409 "duplicate" when the address was already a confirmed
+ * subscriber, which made the route an oracle: anyone could type an address in
+ * and learn from the status code whether that person is on the association's
+ * newsletter list. That's personal data under PDPA, disclosed to an anonymous
+ * caller, and the per-IP limit only made it slower.
+ *
+ * Saying the same thing either way is the fix, and it's why the Brevo calls
+ * moved into `after()` below — an identical body that arrives 400ms later for
+ * one class of address than the other still answers the question.
+ */
+function respondAccepted() {
+  return NextResponse.json({ ok: true }, { status: 201 });
 }
 
 /** Names what's missing so a misconfigured deploy says so instead of 500-ing blind. */
@@ -82,11 +75,11 @@ function missingConfig(): string[] {
  *
  * Necessary because /contacts/doubleOptinConfirmation answers 204 even for an
  * address that is already a confirmed subscriber — it just mails the
- * confirmation link again. So the "you're already subscribed" case has to be
- * detected here; there is no error response to react to.
+ * confirmation link again. Skipping that saves a send against a quota of 300 a
+ * day; it no longer changes what the caller is told.
  *
  * Fails open: if the lookup itself breaks, we'd rather send a duplicate
- * confirmation than turn a working form into an error for everyone.
+ * confirmation than drop a real signup.
  */
 async function findContact(email: string): Promise<{ listIds?: number[]; emailBlacklisted?: boolean } | null> {
   try {
@@ -106,61 +99,21 @@ async function findContact(email: string): Promise<{ listIds?: number[]; emailBl
   }
 }
 
-export async function POST(request: Request) {
-  if (!sameOrigin(request)) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
-
-  let body: { email?: string; locale?: string; botcheck?: unknown };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "invalid_request" }, { status: 400 });
-  }
-
-  // Honeypot: the field is hidden, so only a bot filling the form blindly sets
-  // it. Answer as if it worked — telling it apart from a real signup only
-  // teaches whoever wrote it to stop filling the field.
-  if (body.botcheck) {
-    return NextResponse.json({ ok: true }, { status: 201 });
-  }
-
-  // Counted before the email is even validated, so spraying junk addresses
-  // costs the same budget as spraying real ones.
-  const byIp = rateLimit(`ip:${clientIp(request)}`, PER_IP_LIMIT, PER_IP_WINDOW);
-  if (!byIp.ok) {
-    return tooManyRequests(byIp.retryAfter);
-  }
-
-  const email = (body.email ?? "").trim().toLowerCase();
-  const locale = body.locale === "en" ? "en" : "th";
-
-  if (!EMAIL_RE.test(email)) {
-    return NextResponse.json({ error: "invalid_email" }, { status: 400 });
-  }
-
-  const missing = missingConfig();
-  if (missing.length > 0) {
-    console.error(`subscribe: not configured — missing ${missing.join(", ")}`);
-    return NextResponse.json({ error: "server_error" }, { status: 500 });
-  }
-
-  // Already a confirmed subscriber? Say so instead of mailing them again.
+/**
+ * Runs after the response has gone out, so nothing it does — how long it takes,
+ * whether it sends at all — is visible to the caller. Everything reports through
+ * the log, which is now the only place a Brevo failure surfaces; that's the
+ * trade for not leaking list membership.
+ */
+async function deliverConfirmation(email: string, locale: "th" | "en") {
   // Someone who unsubscribed (emailBlacklisted) still gets the confirmation
   // flow — that's them opting back in, and the double opt-in is the record of
   // that consent. Same for a contact who exists but hasn't confirmed yet:
   // re-sending the link is the point.
   const existing = await findContact(email);
   if (existing && existing.listIds?.includes(LIST_ID) && !existing.emailBlacklisted) {
-    return NextResponse.json({ error: "duplicate" }, { status: 409 });
-  }
-
-  // Past the duplicate check, so this only ever counts mails we're about to
-  // actually send. It's the cap on "resend the link, it never arrived" —
-  // legitimate, but not fifty times.
-  const byEmail = rateLimit(`email:${email}`, PER_EMAIL_LIMIT, PER_EMAIL_WINDOW);
-  if (!byEmail.ok) {
-    return tooManyRequests(byEmail.retryAfter);
+    console.info("subscribe: address is already a confirmed subscriber — no mail sent.");
+    return;
   }
 
   let res: Response;
@@ -184,33 +137,70 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     console.error("subscribe: cannot reach Brevo", err);
-    return NextResponse.json({ error: "server_error" }, { status: 502 });
+    return;
   }
 
   // 204 on success — nothing to parse.
-  if (res.ok) {
-    return NextResponse.json({ ok: true }, { status: 201 });
-  }
+  if (res.ok) return;
 
   const data = await res.json().catch(() => null);
-  const code = typeof data?.code === "string" ? data.code : "";
-  const message = JSON.stringify(data ?? "").toLowerCase();
-
-  // Already on the list, or already sent a confirmation they haven't clicked.
-  if (
-    res.status === 400 &&
-    (code === "duplicate_parameter" || message.includes("already") || message.includes("exist"))
-  ) {
-    return NextResponse.json({ error: "duplicate" }, { status: 409 });
-  }
-
-  if (res.status === 400 && (code === "invalid_parameter" || message.includes("email"))) {
-    return NextResponse.json({ error: "invalid_email" }, { status: 400 });
-  }
 
   console.error(
     `subscribe: Brevo returned ${res.status}: ${JSON.stringify(data)}` +
       (res.status === 401 ? " — check BREVO_API_KEY." : "")
   );
-  return NextResponse.json({ error: "server_error" }, { status: 502 });
+}
+
+export async function POST(request: Request) {
+  if (!sameOrigin(request)) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
+  const read = await readJsonBody(request, MAX_BODY_BYTES);
+  if (!read.ok) {
+    return read.status === 413
+      ? NextResponse.json({ error: "too_large" }, { status: 413 })
+      : NextResponse.json({ error: "invalid_request" }, { status: 400 });
+  }
+  const body = read.body as { email?: string; locale?: string; botcheck?: unknown };
+
+  // Honeypot: the field is hidden, so only a bot filling the form blindly sets
+  // it. Answer as if it worked — telling it apart from a real signup only
+  // teaches whoever wrote it to stop filling the field.
+  if (body.botcheck) {
+    return respondAccepted();
+  }
+
+  // Counted before the email is even validated, so spraying junk addresses
+  // costs the same budget as spraying real ones.
+  const byIp = rateLimit(`ip:${clientIp(request)}`, PER_IP_LIMIT, PER_IP_WINDOW);
+  if (!byIp.ok) {
+    return tooManyRequests(byIp.retryAfter);
+  }
+
+  const email = (body.email ?? "").trim().toLowerCase();
+  const locale = body.locale === "en" ? "en" : "th";
+
+  if (!EMAIL_RE.test(email)) {
+    return NextResponse.json({ error: "invalid_email" }, { status: 400 });
+  }
+
+  const missing = missingConfig();
+  if (missing.length > 0) {
+    console.error(`subscribe: not configured — missing ${missing.join(", ")}`);
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
+  }
+
+  // Ahead of the Brevo work rather than after the duplicate check, so this cap
+  // depends only on how often the address was submitted — never on whether it
+  // turned out to be a subscriber. It's still what stops "resend the link, it
+  // never arrived" from becoming fifty mails.
+  const byEmail = rateLimit(`email:${email}`, PER_EMAIL_LIMIT, PER_EMAIL_WINDOW);
+  if (!byEmail.ok) {
+    return tooManyRequests(byEmail.retryAfter);
+  }
+
+  after(() => deliverConfirmation(email, locale));
+
+  return respondAccepted();
 }
