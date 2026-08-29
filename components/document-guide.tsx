@@ -8,6 +8,7 @@ import type {
   GuideStep,
 } from "@/lib/document-guide-data";
 import type { ResourceItem } from "@/lib/resource-detail-data";
+import { safeUrl } from "@/lib/safe-url";
 
 interface DocumentGuideSectionProps {
   guide: DocumentGuide;
@@ -179,9 +180,9 @@ function StepRow({
       </span>
 
       <span className="min-w-0 flex-1 text-sm leading-snug">
-        {doc ? (
+        {safeUrl(doc?.href) ? (
           <a
-            href={doc.href}
+            href={safeUrl(doc?.href)}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-baseline gap-1.5 font-medium text-primary underline underline-offset-4 hover:text-primary/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"

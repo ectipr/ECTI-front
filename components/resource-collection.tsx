@@ -4,6 +4,7 @@ import { Download, ExternalLink, FileText } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ResourceItem } from "@/lib/resource-detail-data";
 import type { Locale } from "@/lib/i18n";
+import { safeUrl } from "@/lib/safe-url";
 
 interface ResourceCollectionProps {
   items: ResourceItem[];
@@ -65,12 +66,12 @@ export function ResourceCollection({
                   className="w-full gap-1.5 border-border text-xs font-medium"
                 >
                   {item.external ? (
-                    <a href={item.href} target="_blank" rel="noopener noreferrer">
+                    <a href={safeUrl(item.href)} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="h-3.5 w-3.5" />
                       {labels.open}
                     </a>
                   ) : (
-                    <a href={item.href} download>
+                    <a href={safeUrl(item.href)} download>
                       <Download className="h-3.5 w-3.5" />
                       {labels.download}
                     </a>

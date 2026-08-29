@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getJournals } from "@/lib/publications-data";
 import { getConferences } from "@/lib/conferences-data";
+import { safeUrl } from "@/lib/safe-url";
 
 interface PageProps {
   params: Promise<{ locale: string }>;
@@ -68,14 +69,14 @@ export default async function PublicationsPage({ params }: PageProps) {
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   {journal.description}
                 </p>
-                {journal.url && (
+                {safeUrl(journal.url) && (
                   <Button
                     asChild
                     variant="outline"
                     className="mt-auto w-fit gap-2 border-border"
                   >
                     <a
-                      href={journal.url}
+                      href={safeUrl(journal.url)}
                       target="_blank"
                       rel="noopener noreferrer"
                     >

@@ -49,6 +49,7 @@ import {
   fetchMembershipDocuments,
 } from "@/lib/membership-data";
 import { getApplyLink } from "@/lib/apply-data";
+import { safeUrl } from "@/lib/safe-url";
 
 interface PageProps {
   params: Promise<{ locale: string }>;
@@ -391,9 +392,9 @@ export default async function MembershipPage({ params }: PageProps) {
                           {dict.membership.channelOnlineDesc}
                         </p>
                         <Button asChild size="sm" variant="outline">
-                          {applyUrl ? (
+                          {safeUrl(applyUrl) ? (
                             <a
-                              href={applyUrl}
+                              href={safeUrl(applyUrl)}
                               target="_blank"
                               rel="noopener noreferrer"
                             >
@@ -452,7 +453,7 @@ export default async function MembershipPage({ params }: PageProps) {
                 {documents.map((doc) => (
                   <a
                     key={doc.id}
-                    href={doc.fileUrl ?? "#"}
+                    href={safeUrl(doc.fileUrl) ?? "#"}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="group flex items-center gap-3 rounded-lg border border-border bg-card p-4 transition-shadow hover:shadow-md"
@@ -518,8 +519,8 @@ export default async function MembershipPage({ params }: PageProps) {
             asChild
             className="bg-accent text-accent-foreground hover:bg-accent/90"
           >
-            {applyUrl ? (
-              <a href={applyUrl} target="_blank" rel="noopener noreferrer">
+            {safeUrl(applyUrl) ? (
+              <a href={safeUrl(applyUrl)} target="_blank" rel="noopener noreferrer">
                 {dict.membership.ctaButton}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </a>

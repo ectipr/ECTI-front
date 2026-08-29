@@ -42,6 +42,10 @@ export function NewsletterSection({ dict }: NewsletterSectionProps) {
         setEmail("");
         setSent(true);
       } else if (res.status === 409 || data?.error === "duplicate") {
+        // The route no longer answers 409: telling an anonymous caller that an
+        // address is already on the list is a membership disclosure, so a
+        // repeat signup now gets the same "check your inbox" as a new one.
+        // Kept as a safety net in case that ever changes back.
         toast.info(dict.home.newsletterDuplicate);
       } else if (res.status === 429) {
         toast.error(dict.home.newsletterTooMany);

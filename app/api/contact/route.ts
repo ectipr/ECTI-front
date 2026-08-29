@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
-import { sameOrigin, clientIp } from "@/lib/request-guards";
+import { sameOrigin, clientIp, readJsonBody } from "@/lib/request-guards";
 
 // Contact form → the association's inbox, as a Brevo transactional email.
 //
@@ -56,7 +56,7 @@ const MAX_LENGTHS = {
   message: 5000,
 } as const;
 
-/** Refuse an oversized body before reading it into memory. */
+/** Cap on the body, enforced while reading rather than from the declared length. */
 const MAX_BODY_BYTES = 64 * 1024;
 
 type Field = keyof typeof MAX_LENGTHS;
@@ -153,17 +153,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const declaredLength = Number(request.headers.get("content-length") ?? 0);
-  if (declaredLength > MAX_BODY_BYTES) {
-    return NextResponse.json({ error: "too_large" }, { status: 413 });
+  const read = await readJsonBody(request, MAX_BODY_BYTES);
+  if (!read.ok) {
+    return read.status === 413
+      ? NextResponse.json({ error: "too_large" }, { status: 413 })
+      : NextResponse.json({ error: "invalid_request" }, { status: 400 });
   }
-
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "invalid_request" }, { status: 400 });
-  }
+  const body = read.body;
 
   // Honeypot: the field is hidden, so only a bot filling the form blindly sets
   // it. Answer as if it worked — telling it apart from a real submission only

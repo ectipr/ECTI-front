@@ -2,20 +2,30 @@
 // produced by the blocks field) into styled React elements.
 
 import { absoluteMediaUrl } from "@/lib/strapi-media";
+import { safeUrl } from "@/lib/safe-url";
 
 // Recursive child node renderer
 function RenderChild({ child }: { child: any }) {
   if (child.type === "link") {
+    const children = child.children?.map((c: any, idx: number) => (
+      <RenderChild key={idx} child={c} />
+    ));
+
+    // A link whose URL isn't http(s)/mailto/tel keeps its text and loses the
+    // anchor. The rejected case in practice is `javascript:`, which React
+    // renders happily and which turns an editor account into script running in
+    // every reader's browser.
+    const href = safeUrl(child.url);
+    if (!href) return <>{children}</>;
+
     return (
       <a
-        href={child.url}
+        href={href}
         target="_blank"
         rel="noopener noreferrer"
         className="text-primary underline hover:text-primary/80 transition-colors"
       >
-        {child.children?.map((c: any, idx: number) => (
-          <RenderChild key={idx} child={c} />
-        ))}
+        {children}
       </a>
     );
   }

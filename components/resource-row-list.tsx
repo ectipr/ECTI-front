@@ -2,6 +2,7 @@ import { Newspaper, ExternalLink } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ResourceItem } from "@/lib/resource-detail-data";
 import type { Locale } from "@/lib/i18n";
+import { safeUrl } from "@/lib/safe-url";
 
 interface ResourceRowListProps {
   items: ResourceItem[];
@@ -40,7 +41,7 @@ export function ResourceRowList({
         return (
           <li key={`${item.href}-${i}`}>
             <a
-              href={item.href}
+              href={safeUrl(item.href)}
               target="_blank"
               rel="noopener noreferrer"
               aria-label={`${openLabel}: ${title}`}
