@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, CheckCircle2 } from "lucide-react";
 
-// Web3Forms access key routes submissions to the destination inbox. It lives in
-// an env var so the org can change the destination email later (make a new key,
-// swap this value) without touching code. It's used client-side by design.
-const ACCESS_KEY = process.env.NEXT_PUBLIC_WEB3FORMS_ACCESS_KEY;
+// Posts to our own /api/contact, which holds the Web3Forms access key and
+// forwards the message. The key used to live here as NEXT_PUBLIC_ — shipped in
+// the bundle, readable by anyone, and usable from anywhere. More importantly,
+// going straight to Web3Forms left no place to put a rate limit; now there is
+// one, on our side of the request.
 
 interface ContactFormProps {
   labels: {
@@ -23,35 +24,51 @@ interface ContactFormProps {
     formSend: string;
     formSuccess: string;
     formError: string;
+    formTooMany: string;
+    formInvalid: string;
   };
 }
 
 export function ContactForm({ labels }: ContactFormProps) {
   const [submitted, setSubmitted] = useState(false);
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState(false);
+  // Holds the message to show rather than a flag, so "too many attempts" and
+  // "that didn't go through" don't collapse into the same unhelpful line.
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget; // capture before await (currentTarget clears after)
-    setError(false);
+    setError(null);
     setSending(true);
     try {
       const formData = new FormData(form);
-      formData.append("access_key", ACCESS_KEY ?? "");
-      const res = await fetch("https://api.web3forms.com/submit", {
+      const res = await fetch("/api/contact", {
         method: "POST",
-        headers: { Accept: "application/json" },
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: String(formData.get("name") ?? ""),
+          contact: String(formData.get("contact") ?? ""),
+          subject: String(formData.get("subject") ?? ""),
+          message: String(formData.get("message") ?? ""),
+          // Unchecked checkboxes are absent from FormData, so presence is the
+          // whole signal — a person never sends this.
+          botcheck: formData.get("botcheck") !== null,
+        }),
       });
-      const data = await res.json();
-      if (data.success) {
+
+      if (res.ok) {
+        form.reset();
         setSubmitted(true);
+      } else if (res.status === 429) {
+        setError(labels.formTooMany);
+      } else if (res.status === 400 || res.status === 413) {
+        setError(labels.formInvalid);
       } else {
-        setError(true);
+        setError(labels.formError);
       }
     } catch {
-      setError(true);
+      setError(labels.formError);
     } finally {
       setSending(false);
     }
@@ -95,6 +112,7 @@ export function ContactForm({ labels }: ContactFormProps) {
               name="name"
               type="text"
               required
+              maxLength={100}
               placeholder={labels.formName}
               className="border-input"
             />
@@ -108,6 +126,7 @@ export function ContactForm({ labels }: ContactFormProps) {
               name="contact"
               type="text"
               required
+              maxLength={150}
               placeholder={labels.formContactPlaceholder}
               className="border-input"
             />
@@ -121,6 +140,7 @@ export function ContactForm({ labels }: ContactFormProps) {
               name="subject"
               type="text"
               required
+              maxLength={150}
               placeholder={labels.formSubject}
               className="border-input"
             />
@@ -134,6 +154,7 @@ export function ContactForm({ labels }: ContactFormProps) {
               name="message"
               rows={5}
               required
+              maxLength={5000}
               placeholder={labels.formMessage}
               className="border-input"
             />
@@ -170,7 +191,7 @@ export function ContactForm({ labels }: ContactFormProps) {
 
           {error && (
             <p className="text-sm text-destructive" role="alert">
-              {labels.formError}
+              {error}
             </p>
           )}
         </form>
