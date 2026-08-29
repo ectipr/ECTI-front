@@ -1,0 +1,38 @@
+name: ขอฟีเจอร์หรือปรับปรุง
+description: อยากให้เพิ่มหรือแก้อะไร
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: ปัญหาหรือความต้องการ
+      description: อะไรที่ตอนนี้ทำไม่ได้ หรือทำได้แต่ลำบาก — เขียนจากมุมคนใช้งาน
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: อยากให้เป็นยังไง
+      description: ถ้ามีภาพในหัวแล้วเขียนมาได้เลย ถ้ายังไม่มีก็ข้ามได้
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: กระทบตรงไหนบ้าง
+      description: หน้าไหน content type ไหน ต้องแก้ทั้งสอง repo ไหม
+      placeholder: |
+        - หน้า: ...
+        - content type ใน Strapi: ...
+        - ต้องแก้ ECTI-cms ด้วยไหม: ...
+
+  - type: textarea
+    id: done
+    attributes:
+      label: ถือว่าเสร็จเมื่อไหร่
+      description: เงื่อนไขที่ตรวจได้ว่าทำเสร็จแล้ว
+      placeholder: |
+        - [ ] ...
+        - [ ] ทำงานทั้ง th และ en

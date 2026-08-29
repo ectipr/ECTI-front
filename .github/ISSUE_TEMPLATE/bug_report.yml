@@ -1,0 +1,60 @@
+name: รายงานบั๊ก
+description: มีอะไรทำงานไม่ถูกต้อง
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        ถ้าเป็นช่องโหว่ความปลอดภัย **อย่าใช้แบบฟอร์มนี้** — repo เป็น public
+        ให้เปิด private security advisory แทน
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: ปัญหา
+      description: เกิดอะไรขึ้น และควรจะเป็นยังไงแทน
+      placeholder: |
+        ตอนนี้: ...
+        ที่ควรเป็น: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: ทำให้เกิดซ้ำยังไง
+      description: ขั้นตอนที่คนอื่นทำตามแล้วเห็นเหมือนกัน
+      placeholder: |
+        1. เข้าหน้า /th/...
+        2. กด ...
+        3. เห็น ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: เกิดที่ไหนบ้าง
+      description: หน้าไหน ไฟล์ไหน locale ไหน เกิดทุกครั้งหรือบางครั้ง
+      placeholder: |
+        - หน้า: /th/news/[slug]
+        - ไฟล์ที่น่าจะเกี่ยว: components/...
+        - locale: th เท่านั้น / ทั้ง th และ en
+        - เกิดทุกครั้ง / บางครั้ง
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: เจอที่ไหน
+      options:
+        - production
+        - preview deploy
+        - เครื่อง dev
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: อย่างอื่น
+      description: screenshot, log, error message, เบราว์เซอร์
