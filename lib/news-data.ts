@@ -1,4 +1,5 @@
 import { CMS_REVALIDATE_SECONDS } from "@/lib/cache";
+import { fetchAllPages } from "@/lib/strapi-pages";
 import { absoluteMediaUrl } from "@/lib/strapi-media";
 import { locales } from "@/lib/i18n";
 
@@ -77,18 +78,18 @@ function mapNewsPost(item: any): NewsPost {
 // a single language). Fetch one locale's rows; callers merge across locales so a
 // post never disappears / 404s just because it wasn't translated.
 async function fetchNewsRows(locale: string): Promise<any[]> {
-  try {
-    const res = await fetch(
-      `${BASE_URL}/api/news-posts?populate[tags]=true&populate[cover_image]=true&sort=publishedAt:desc&locale=${locale}`,
-      { next: { revalidate: CMS_REVALIDATE_SECONDS } }
-    );
-    if (!res.ok) return [];
-    const json = await res.json();
-    return (json.data ?? []).filter((item: any) => item.slug); // skip entries with no slug
-  } catch (err) {
-    console.warn(`fetchNewsRows(${locale}): API unavailable`, err);
-    return [];
-  }
+  // Every page, not just the first. The archive is past 70 posts and Strapi
+  // hands back 25 unless asked otherwise, so this used to drop most of it
+  // while the count on the page still said how many there really were.
+  const rows = await fetchAllPages(
+    (page, pageSize) =>
+      `${BASE_URL}/api/news-posts?populate[tags]=true&populate[cover_image]=true` +
+      `&sort=publishedAt:desc&locale=${locale}` +
+      `&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    { label: `fetchNewsRows(${locale})`, revalidate: CMS_REVALIDATE_SECONDS }
+  );
+
+  return rows.filter((item: any) => item.slug); // skip entries with no slug
 }
 
 // Same post shares a documentId across locales (and the slug is non-localized too).
