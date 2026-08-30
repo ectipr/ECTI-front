@@ -54,6 +54,10 @@ const csp = [
   // our own origin, so no font CDN belongs here.
   "font-src 'self' data:",
   `connect-src 'self'${cmsOrigin ? ` ${cmsOrigin}` : ""} https://va.vercel-scripts.com https://vitals.vercel-insights.com`,
+  // The contact page embeds the association's location as a Google Maps
+  // iframe. There is no frame-src otherwise, so it falls back to default-src
+  // 'self' and the browser refuses to render the embed at all.
+  "frame-src 'self' https://www.google.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
