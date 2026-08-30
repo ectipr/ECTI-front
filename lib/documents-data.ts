@@ -1,3 +1,4 @@
+import { CMS_REVALIDATE_SECONDS } from "@/lib/cache";
 import {
   associationDocuments,
   type ResourceItem,
@@ -11,7 +12,7 @@ const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:1337").re
 
 async function fetchAPI(endpoint: string) {
   try {
-    const res = await fetch(`${BASE_URL}${endpoint}`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${BASE_URL}${endpoint}`, { next: { revalidate: CMS_REVALIDATE_SECONDS } });
     if (!res.ok) return null;
     const json = await res.json();
     return json?.data || [];

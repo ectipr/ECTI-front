@@ -1,3 +1,4 @@
+import { CMS_REVALIDATE_SECONDS } from "@/lib/cache";
 const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:1337").replace(/\/+$/, "");
 
 export interface ContactInfo {
@@ -10,7 +11,7 @@ export interface ContactInfo {
 export async function getContact(locale: string): Promise<ContactInfo | null> {
   try {
     const res = await fetch(`${BASE_URL}/api/contact?locale=${locale}`, {
-      next: { revalidate: 3600 },
+      next: { revalidate: CMS_REVALIDATE_SECONDS },
     });
     if (!res.ok) return null;
     const json = await res.json();

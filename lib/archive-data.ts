@@ -1,3 +1,4 @@
+import { CMS_REVALIDATE_SECONDS } from "@/lib/cache";
 import {
   eMagazines,
   industryJournals,
@@ -17,7 +18,7 @@ export interface ArchiveGroups {
 
 async function fetchAPI(endpoint: string) {
   try {
-    const res = await fetch(`${BASE_URL}${endpoint}`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${BASE_URL}${endpoint}`, { next: { revalidate: CMS_REVALIDATE_SECONDS } });
     if (!res.ok) return null;
     const json = await res.json();
     return json?.data || [];

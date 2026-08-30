@@ -1,3 +1,4 @@
+import { CMS_REVALIDATE_SECONDS } from "@/lib/cache";
 /**
  * "วิธีใช้" content for Resources → เอกสารของสมาคม — the reimbursement / loan
  * cases and the receipt & mailing info box, migrated from the legacy page
@@ -206,7 +207,7 @@ export const documentGuideFallback: Record<Locale, DocumentGuide> = {
 
 async function fetchAPI(endpoint: string) {
   try {
-    const res = await fetch(`${BASE_URL}${endpoint}`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${BASE_URL}${endpoint}`, { next: { revalidate: CMS_REVALIDATE_SECONDS } });
     if (!res.ok) return null;
     const json = await res.json();
     return json?.data ?? null;

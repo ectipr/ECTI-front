@@ -1,3 +1,4 @@
+import { CMS_REVALIDATE_SECONDS } from "@/lib/cache";
 const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:1337").replace(/\/+$/, "");
 
 export interface BoardMember {
@@ -33,7 +34,7 @@ function mapBoardMember(item: any): BoardMember {
 }
 
 export async function getBoardMembers(locale: string): Promise<BoardMember[]> {
-  const first = await fetch(boardMembersUrl(locale, 1), { next: { revalidate: 3600 } });
+  const first = await fetch(boardMembersUrl(locale, 1), { next: { revalidate: CMS_REVALIDATE_SECONDS } });
   if (!first.ok) return [];
 
   const json = await first.json();
@@ -43,7 +44,7 @@ export async function getBoardMembers(locale: string): Promise<BoardMember[]> {
   if (pageCount > 1) {
     const rest = await Promise.all(
       Array.from({ length: pageCount - 1 }, (_, i) =>
-        fetch(boardMembersUrl(locale, i + 2), { next: { revalidate: 3600 } }).then((res) =>
+        fetch(boardMembersUrl(locale, i + 2), { next: { revalidate: CMS_REVALIDATE_SECONDS } }).then((res) =>
           res.ok ? res.json().then((j) => j.data as any[]) : []
         )
       )
@@ -64,7 +65,7 @@ export interface Milestone {
 export async function getMilestones(locale: string): Promise<Milestone[]> {
   const res = await fetch(
     `${BASE_URL}/api/milestones?sort=year:asc&locale=${locale}`,
-    { next: { revalidate: 3600 } }
+    { next: { revalidate: CMS_REVALIDATE_SECONDS } }
   );
   if (!res.ok) return [];
   const json = await res.json();
@@ -86,7 +87,7 @@ export async function getMissionVisionCards(locale: string): Promise<AboutCard[]
   try {
     const res = await fetch(
       `${BASE_URL}/api/mission-vision?populate=cards&locale=${locale}`,
-      { next: { revalidate: 3600 } }
+      { next: { revalidate: CMS_REVALIDATE_SECONDS } }
     );
     if (!res.ok) return [];
     const json = await res.json();
@@ -112,7 +113,7 @@ export async function getObjectives(locale: string): Promise<ObjectiveItem[]> {
   try {
     const res = await fetch(
       `${BASE_URL}/api/objective?populate=items&locale=${locale}`,
-      { next: { revalidate: 3600 } }
+      { next: { revalidate: CMS_REVALIDATE_SECONDS } }
     );
     if (!res.ok) return [];
     const json = await res.json();

@@ -1,3 +1,4 @@
+import { CMS_REVALIDATE_SECONDS } from "@/lib/cache";
 import { absoluteMediaUrl } from "@/lib/strapi-media";
 import { locales } from "@/lib/i18n";
 
@@ -79,7 +80,7 @@ async function fetchNewsRows(locale: string): Promise<any[]> {
   try {
     const res = await fetch(
       `${BASE_URL}/api/news-posts?populate[tags]=true&populate[cover_image]=true&sort=publishedAt:desc&locale=${locale}`,
-      { next: { revalidate: 3600 } }
+      { next: { revalidate: CMS_REVALIDATE_SECONDS } }
     );
     if (!res.ok) return [];
     const json = await res.json();
@@ -128,7 +129,7 @@ export async function getNewsPostBySlug(slug: string, locale: string): Promise<N
     try {
       const res = await fetch(
         `${BASE_URL}/api/news-posts?filters[slug][$eq]=${slug}&populate[tags]=true&populate[cover_image]=true&populate[attachments][populate][file]=true&locale=${loc}`,
-        { next: { revalidate: 3600 } }
+        { next: { revalidate: CMS_REVALIDATE_SECONDS } }
       );
       if (!res.ok) continue;
       const json = await res.json();
