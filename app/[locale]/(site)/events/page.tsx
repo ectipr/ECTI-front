@@ -48,9 +48,15 @@ export default async function EventsPage({ params }: PageProps) {
 
   const years = [...new Set(events.map(e => String(e.year)))].sort((a, b) => Number(b) - Number(a));
 
-  const locations = [
-    ...new Set(events.map(e => e.location)),
-  ];
+  // Empty entries are filtered out because Radix throws on a SelectItem whose
+  // value is an empty string — it reserves "" for "nothing selected". The
+  // legacy conference import is where they come from: the old site never
+  // recorded a venue for any of its 41 conferences, so every one of them
+  // arrives with location unset, and one of those was enough to take the whole
+  // page down rather than just leave a filter option blank.
+  const locations = [...new Set(events.map((e) => e.location))]
+    .filter((location) => location.trim() !== "")
+    .sort((a, b) => a.localeCompare(b));
 
   return (
     <>
