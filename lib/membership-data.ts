@@ -1,3 +1,4 @@
+import { CMS_REVALIDATE_SECONDS } from "@/lib/cache";
 import { absoluteMediaUrl } from "@/lib/strapi-media";
 
 const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:1337").replace(/\/+$/, "");
@@ -59,7 +60,7 @@ export interface MembershipDocument {
 async function fetchAPI(endpoint: string) {
   try {
     const res = await fetch(`${BASE_URL}${endpoint}`, {
-      next: { revalidate: 3600 },
+      next: { revalidate: CMS_REVALIDATE_SECONDS },
     });
     if (!res.ok) {
         return null;

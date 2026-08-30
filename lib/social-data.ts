@@ -1,3 +1,4 @@
+import { CMS_REVALIDATE_SECONDS } from "@/lib/cache";
 const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:1337").replace(/\/+$/, "");
 
 export interface SocialLinks {
@@ -23,7 +24,7 @@ function clean(url: unknown): string | null {
 export async function getSocialLinks(locale: string): Promise<SocialLinks> {
   try {
     const res = await fetch(`${BASE_URL}/api/social-link?locale=${locale}`, {
-      next: { revalidate: 3600 },
+      next: { revalidate: CMS_REVALIDATE_SECONDS },
     });
     if (!res.ok) return EMPTY;
     const json = await res.json();

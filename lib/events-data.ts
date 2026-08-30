@@ -1,7 +1,8 @@
+import { CMS_REVALIDATE_SECONDS } from "@/lib/cache";
 export type EventStatus = "open" | "register" | "upcoming" | "finished";
 export type EventType = "conference" | "workshop" | "seminar";
 
-const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
+const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:1337").replace(/\/+$/, "");
 const API_URL = `${BASE_URL}/api/activities`;
 
 export interface EventDeadline {
@@ -41,7 +42,7 @@ export async function fetchEventBySlug(slug: string, locale: string) {
   try {
     const res = await fetch(
       `${API_URL}?populate=*&filters[slug][$eq]=${slug}&locale=${locale}`,
-      { next: { revalidate: 3600 } }
+      { next: { revalidate: CMS_REVALIDATE_SECONDS } }
     );
     if (!res.ok) return null;
     json = await res.json();
@@ -87,7 +88,7 @@ export async function fetchEventsFromAPI(locale: string): Promise<ECTIEvent[]> {
   try {
     const res = await fetch(
       `${API_URL}?populate=*&sort=event_start_date:desc&locale=${locale}`,
-      { next: { revalidate: 3600 } }
+      { next: { revalidate: CMS_REVALIDATE_SECONDS } }
     );
     if (!res.ok) return [];
     json = await res.json();
@@ -164,7 +165,7 @@ export async function getFeaturedEvents(
   try {
     const res = await fetch(
       `${API_URL}?populate=*&sort=event_start_date:desc&pagination[limit]=${limit}&locale=${locale}`,
-      { next: { revalidate: 3600 } }
+      { next: { revalidate: CMS_REVALIDATE_SECONDS } }
     );
     if (!res.ok) return [];
     json = await res.json();

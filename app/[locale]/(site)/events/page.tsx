@@ -5,7 +5,19 @@ import { PageHeader } from "@/components/page-header";
 import { EventsListClient } from "@/components/events-list-client";
 import { fetchEventsFromAPI } from "@/lib/events-data";
 
-export const dynamic = "force-dynamic";
+// No `dynamic = "force-dynamic"` here on purpose. It was added in March, when
+// editing the CMS left the site showing old data and opting out of caching was
+// the quickest way to make it move. The webhook in June fixed that properly —
+// Strapi now calls /api/revalidate on publish — so the opt-out only cost us a
+// serverless render per visitor for a page every visitor sees identically.
+//
+// Nothing on this page varies per request: `event_status` is a field the editor
+// sets in Strapi rather than something derived from today's date, and the
+// year/location filtering all happens in EventsListClient. So it renders once
+// and is served as a file until an editor changes something.
+//
+// If events stop updating after a publish, the webhook is what to check.
+// Putting force-dynamic back would hide that, not fix it.
 
 interface PageProps {
   params: Promise<{ locale: string }>;
