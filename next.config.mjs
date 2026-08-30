@@ -16,6 +16,23 @@ const cmsOrigin = (() => {
 })();
 
 /**
+ * Strapi Cloud serves uploads from a sibling host: the project's API origin
+ * with `.media.` spliced in. The CMS origin alone therefore doesn't cover
+ * images, and the browser drops every one of them on the CSP.
+ *
+ * Anywhere else — local, or a self-hosted CMS — media comes off the same
+ * origin as the API and this resolves to the identical string, which the
+ * img-src list below de-duplicates.
+ */
+const mediaOrigin = cmsOrigin.replace(
+  /^(https:\/\/[^.]+)\.strapiapp\.com$/,
+  "$1.media.strapiapp.com"
+);
+
+/** Distinct origins images may be loaded from, in CSP order. */
+const imgOrigins = [...new Set([cmsOrigin, mediaOrigin].filter(Boolean))];
+
+/**
  * script-src keeps 'unsafe-inline' on purpose. Next.js inlines the bootstrap
  * and the flight data on every page, so removing it means moving to a
  * nonce-per-request, which has to be generated in middleware.ts and threaded
@@ -32,7 +49,7 @@ const csp = [
   `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"} https://va.vercel-scripts.com`,
   // Tailwind and the Radix components both set styles inline.
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob:${cmsOrigin ? ` ${cmsOrigin}` : ""}`,
+  `img-src 'self' data: blob:${imgOrigins.map((origin) => ` ${origin}`).join("")}`,
   // next/font/google downloads the fonts at build time and serves them from
   // our own origin, so no font CDN belongs here.
   "font-src 'self' data:",
