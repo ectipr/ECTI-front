@@ -19,29 +19,72 @@ import {
   Tag,
   CalendarCheck,
 } from "lucide-react";
-import { events, getEventBySlug, fetchEventBySlug } from "@/lib/events-data";
+import { events, getEventBySlug, fetchEventBySlug, fetchEventsFromAPI } from "@/lib/events-data";
 import type { ECTIEvent, EventStatus } from "@/lib/events-data";
 
 interface PageProps {
   params: Promise<{ locale: string; slug: string }>;
 }
 
+/**
+ * Every event the CMS knows about, in both locales.
+ *
+ * This used to list the six events hard-coded in lib/events-data.ts, which was
+ * fine while those six were all there were. The legacy import put 41 real
+ * conferences in the CMS, and none of them were in that array — so none of them
+ * were prerendered, and the page below quietly fell back to rendering them on
+ * demand while `generateMetadata` returned nothing at all for them.
+ *
+ * The static fallback is still merged in. It is what the page falls back to when
+ * the CMS is unreachable, and dropping its slugs here would mean a build against
+ * a down CMS produces a site where those pages 404 rather than showing the
+ * built-in copy.
+ */
 export async function generateStaticParams() {
-  return events.flatMap((event) => [
-    { locale: "th", slug: event.slug },
-    { locale: "en", slug: event.slug },
+  const fromCms = await fetchEventsFromAPI("th");
+
+  const slugs = new Set([
+    ...fromCms.map((event) => event.slug),
+    ...events.map((event) => event.slug),
+  ]);
+
+  return [...slugs].flatMap((slug) => [
+    { locale: "th", slug },
+    { locale: "en", slug },
   ]);
 }
 
+/**
+ * Reads the same source the page does, in the same order.
+ *
+ * These two disagreeing is the bug this replaces: the page rendered a
+ * conference from the CMS while the tab title, the search result and every
+ * shared link described nothing, because metadata was still looking the slug up
+ * in an array of six examples.
+ */
 export async function generateMetadata({ params }: PageProps) {
   const { locale, slug } = await params;
   if (!isValidLocale(locale)) return {};
-  const event = getEventBySlug(slug);
+
+  const event = (await fetchEventBySlug(slug, locale)) ?? getEventBySlug(slug);
   if (!event) return {};
+
   const dict = getDictionary(locale as Locale);
+  const url = `/${locale}/events/${slug}`;
+
   return {
     title: `${event.title} | ${dict.events.title}`,
     description: event.description,
+    openGraph: {
+      title: event.title,
+      description: event.description,
+      type: "article",
+      locale: locale === "th" ? "th_TH" : "en_US",
+    },
+    alternates: {
+      canonical: url,
+      languages: { th: `/th/events/${slug}`, en: `/en/events/${slug}` },
+    },
   };
 }
 
