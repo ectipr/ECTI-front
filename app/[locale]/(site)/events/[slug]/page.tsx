@@ -173,10 +173,12 @@ export default async function EventDetailPage({ params }: PageProps) {
                     <CalendarDays className="h-4 w-4 text-primary" />
                     {date}
                   </span>
-                  <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4 text-primary" />
-                    {location}
-                  </span>
+                  {location ? (
+                    <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <MapPin className="h-4 w-4 text-primary" />
+                      {location}
+                    </span>
+                  ) : null}
                 </div>
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   {overview}
@@ -288,20 +290,25 @@ export default async function EventDetailPage({ params }: PageProps) {
               </Card>
             )}
 
-            {/* Venue */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <MapPin className="h-5 w-5 text-primary" />
-                  {dict.events.detailVenue}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  {location}
-                </p>
-              </CardContent>
-            </Card>
+            {/* Venue — omitted when unknown. An empty card under a "Venue"
+                heading reads as missing data on our side; leaving it out says
+                the same thing more quietly, and the 41 imported conferences
+                have no venue recorded anywhere. */}
+            {location ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <MapPin className="h-5 w-5 text-primary" />
+                    {dict.events.detailVenue}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    {location}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : null}
 
             {/* Organizer */}
             <Card>

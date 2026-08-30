@@ -427,10 +427,12 @@ function EventCard({
             <CalendarDays className="h-4 w-4 shrink-0 text-primary" />
             {date}
           </span>
-          <span className="flex items-center gap-1.5">
-            <MapPin className="h-4 w-4 shrink-0 text-primary" />
-            {location}
-          </span>
+          {location ? (
+            <span className="flex items-center gap-1.5">
+              <MapPin className="h-4 w-4 shrink-0 text-primary" />
+              {location}
+            </span>
+          ) : null}
         </div>
 
         {/* Deadlines row */}
