@@ -1,4 +1,5 @@
 import { CMS_REVALIDATE_SECONDS } from "@/lib/cache";
+import { fetchAllPages } from "@/lib/strapi-pages";
 export type EventStatus = "open" | "register" | "upcoming" | "finished";
 export type EventType = "conference" | "workshop" | "seminar";
 
@@ -84,25 +85,17 @@ export async function fetchEventBySlug(slug: string, locale: string) {
 // Ordered newest-first here rather than in the client: EventsListClient re-sorts
 // by status with a stable sort, so this date order survives within each status group.
 export async function fetchEventsFromAPI(locale: string): Promise<ECTIEvent[]> {
-  let json: any;
-  try {
-    const res = await fetch(
-      `${API_URL}?populate=*&sort=event_start_date:desc&locale=${locale}`,
-      { next: { revalidate: CMS_REVALIDATE_SECONDS } }
-    );
-    if (!res.ok) return [];
-    json = await res.json();
-  } catch (err) {
-    console.warn("fetchEventsFromAPI: API unavailable", err);
-    return [];
-  }
+  // The legacy conference import took this collection past Strapi's default
+  // page of 25, so reading one page silently lost half the history — and the
+  // half it kept was whichever end of the date sort happened to land first.
+  const rows = await fetchAllPages(
+    (page, pageSize) =>
+      `${API_URL}?populate=*&sort=event_start_date:desc&locale=${locale}` +
+      `&pagination[page]=${page}&pagination[pageSize]=${pageSize}`,
+    { label: `fetchEventsFromAPI(${locale})`, revalidate: CMS_REVALIDATE_SECONDS }
+  );
 
-  if (!json || !Array.isArray(json.data)) {
-    console.warn("fetchEventsFromAPI: Invalid data received", json);
-    return [];
-  }
-
-  return json.data.map((item: any) => {
+  return rows.map((item: any) => {
     const attr = item;
 
     return {
