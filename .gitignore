@@ -11,6 +11,12 @@ node_modules/
 !.env.example
 .vercel
 
+# This project is pnpm-only — see packageManager in package.json. An npm
+# lockfile here would go unmaintained and quietly resolve a different
+# dependency tree than the one production builds from.
+package-lock.json
+yarn.lock
+
 # logs
 npm-debug.log*
 pnpm-debug.log*
