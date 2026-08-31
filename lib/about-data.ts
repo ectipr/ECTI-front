@@ -34,25 +34,30 @@ function mapBoardMember(item: any): BoardMember {
 }
 
 export async function getBoardMembers(locale: string): Promise<BoardMember[]> {
-  const first = await fetch(boardMembersUrl(locale, 1), { next: { revalidate: CMS_REVALIDATE_SECONDS } });
-  if (!first.ok) return [];
+  try {
+    const first = await fetch(boardMembersUrl(locale, 1), { next: { revalidate: CMS_REVALIDATE_SECONDS } });
+    if (!first.ok) return [];
 
-  const json = await first.json();
-  const items: any[] = [...json.data];
+    const json = await first.json();
+    const items: any[] = [...json.data];
 
-  const pageCount: number = json.meta?.pagination?.pageCount ?? 1;
-  if (pageCount > 1) {
-    const rest = await Promise.all(
-      Array.from({ length: pageCount - 1 }, (_, i) =>
-        fetch(boardMembersUrl(locale, i + 2), { next: { revalidate: CMS_REVALIDATE_SECONDS } }).then((res) =>
-          res.ok ? res.json().then((j) => j.data as any[]) : []
+    const pageCount: number = json.meta?.pagination?.pageCount ?? 1;
+    if (pageCount > 1) {
+      const rest = await Promise.all(
+        Array.from({ length: pageCount - 1 }, (_, i) =>
+          fetch(boardMembersUrl(locale, i + 2), { next: { revalidate: CMS_REVALIDATE_SECONDS } }).then((res) =>
+            res.ok ? res.json().then((j) => j.data as any[]) : []
+          )
         )
-      )
-    );
-    for (const page of rest) items.push(...page);
-  }
+      );
+      for (const page of rest) items.push(...page);
+    }
 
-  return items.map(mapBoardMember);
+    return items.map(mapBoardMember);
+  } catch (error) {
+    console.error("Error fetching board members:", error);
+    return [];
+  }
 }
 
 export interface Milestone {
@@ -63,18 +68,23 @@ export interface Milestone {
 }
 
 export async function getMilestones(locale: string): Promise<Milestone[]> {
-  const res = await fetch(
-    `${BASE_URL}/api/milestones?sort=year:asc&locale=${locale}`,
-    { next: { revalidate: CMS_REVALIDATE_SECONDS } }
-  );
-  if (!res.ok) return [];
-  const json = await res.json();
-  return json.data.map((item: any) => ({
-    id: item.id,
-    year: String(item.year),
-    title: item.title,
-    description: item.description,
-  }));
+  try {
+    const res = await fetch(
+      `${BASE_URL}/api/milestones?sort=year:asc&locale=${locale}`,
+      { next: { revalidate: CMS_REVALIDATE_SECONDS } }
+    );
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data.map((item: any) => ({
+      id: item.id,
+      year: String(item.year),
+      title: item.title,
+      description: item.description,
+    }));
+  } catch (error) {
+    console.error("Error fetching milestones:", error);
+    return [];
+  }
 }
 
 export interface AboutCard {
