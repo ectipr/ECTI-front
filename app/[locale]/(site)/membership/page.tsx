@@ -50,6 +50,7 @@ import {
 } from "@/lib/membership-data";
 import { getApplyLink } from "@/lib/apply-data";
 import { safeUrl } from "@/lib/safe-url";
+import { ApplicationStatusCheck } from "@/components/application-status-check";
 
 interface PageProps {
   params: Promise<{ locale: string }>;
@@ -498,6 +499,40 @@ export default async function MembershipPage({ params }: PageProps) {
                       ) : (
                         <RichTextRenderer blocks={faq.a} />
                       )}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* --- Application status check ---
+            scroll-mt clears the sticky header, because the point of the id is
+            that /membership#status can be sent to an applicant as a link. */}
+        <section id="status" className="mb-20 scroll-mt-24">
+          <h2 className="mb-3 text-2xl font-bold text-foreground md:text-3xl">
+            {dict.membership.statusTitle}
+          </h2>
+          <p className="mb-8 max-w-2xl leading-relaxed text-muted-foreground">
+            {dict.membership.statusDesc}
+          </p>
+          <Card className="border-border">
+            <CardContent className="p-6">
+              <ApplicationStatusCheck dict={dict} locale={locale as Locale} />
+              <Separator className="my-6" />
+              <Accordion type="single" collapsible className="w-full">
+                {dict.membership.statusHelp.map((item, i) => (
+                  <AccordionItem key={i} value={`status-help-${i}`}>
+                    <AccordionTrigger className="text-left text-base font-medium text-foreground">
+                      {item.q}
+                    </AccordionTrigger>
+                    <AccordionContent className="text-sm leading-relaxed text-muted-foreground">
+                      {item.a.map((paragraph, j) => (
+                        <p key={j} className="mb-2 last:mb-0">
+                          {paragraph}
+                        </p>
+                      ))}
                     </AccordionContent>
                   </AccordionItem>
                 ))}

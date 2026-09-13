@@ -152,6 +152,45 @@ const dictionaries = {
       ctaDesc:
         "สมัครสมาชิก ECTI วันนี้ เพื่อเชื่อมต่อกับชุมชนนักวิจัยและวิชาชีพชั้นนำของประเทศ",
       ctaButton: "สมัครสมาชิกเลย",
+      // Application status check — the #status section. The status itself is
+      // never rendered, only mailed; statusSent is therefore the same sentence
+      // whether or not an application was found.
+      statusTitle: "ตรวจสอบสถานะใบสมัคร",
+      statusDesc:
+        "กรอกอีเมลที่ใช้ในใบสมัคร ระบบจะส่งสถานะปัจจุบันของใบสมัครไปที่อีเมลนั้น",
+      statusPlaceholder: "อีเมลที่ใช้สมัคร",
+      statusButton: "ส่งสถานะไปที่อีเมล",
+      statusSent:
+        "ถ้าอีเมลนี้มีใบสมัครอยู่ในระบบ เราได้ส่งสถานะไปให้แล้ว กรุณาตรวจกล่องจดหมาย รวมถึงโฟลเดอร์สแปมหรือจดหมายขยะ",
+      statusAnother: "ตรวจสอบอีเมลอื่น",
+      statusInvalid: "รูปแบบอีเมลไม่ถูกต้อง",
+      statusTooMany: "ขอตรวจสอบบ่อยเกินไป กรุณารอสักครู่แล้วลองอีกครั้ง",
+      statusError: "ส่งไม่สำเร็จ กรุณาลองอีกครั้ง",
+      statusHelp: [
+        {
+          q: "ทำไมส่งสถานะไปที่อีเมล ไม่แสดงบนหน้าเว็บ",
+          a: [
+            "สถานะใบสมัครเป็นข้อมูลส่วนบุคคล ถ้าแสดงบนหน้าเว็บ ใครก็กรอกอีเมลของคนอื่นเพื่อดูได้",
+            "การส่งเข้าอีเมลทำให้มีแต่เจ้าของอีเมลนั้นที่เห็นสถานะของตัวเอง และเป็นเหตุผลที่ไม่ต้องมีรหัสยืนยันให้ยุ่งยาก",
+          ],
+        },
+        {
+          q: "แต่ละสถานะหมายถึงอะไร",
+          a: [
+            "กำลังพิจารณา — สมาคมได้รับใบสมัครแล้ว อยู่ในขั้นตอนตรวจสอบเอกสารและหลักฐานการชำระเงิน",
+            "อนุมัติแล้ว — ใบสมัครผ่านการพิจารณาเรียบร้อย",
+            "ไม่ผ่านการพิจารณา — ติดต่อสมาคมเพื่อสอบถามเหตุผลหรือยื่นสมัครใหม่ได้",
+          ],
+        },
+        {
+          q: "ไม่ได้รับอีเมล ต้องทำอย่างไร",
+          a: [
+            "ตรวจโฟลเดอร์สแปมหรือจดหมายขยะก่อน",
+            "ตรวจว่าอีเมลที่กรอกตรงกับที่ใช้ในใบสมัครจริง ถ้าสมัครไว้ด้วยอีเมลอื่นระบบจะหาไม่พบ",
+            "ถ้ายังไม่ได้รับ กรุณาติดต่อสมาคมผ่านหน้าติดต่อเรา",
+          ],
+        },
+      ],
       feeUnit: "บาท",
       feeUnknown: "—",
       typesEmpty: "ข้อมูลกำลังปรับปรุง",
@@ -497,6 +536,45 @@ const dictionaries = {
       ctaDesc:
         "Join ECTI today and connect with Thailand's leading research and professional community.",
       ctaButton: "Apply for Membership",
+      // Application status check — the #status section. The status itself is
+      // never rendered, only mailed; statusSent is therefore the same sentence
+      // whether or not an application was found.
+      statusTitle: "Check Application Status",
+      statusDesc:
+        "Enter the email address you applied with and we will send the current status of your application to it.",
+      statusPlaceholder: "Email used to apply",
+      statusButton: "Email me the status",
+      statusSent:
+        "If an application exists for this address, its status has been sent. Please check your inbox, including the spam or junk folder.",
+      statusAnother: "Check another address",
+      statusInvalid: "That email address doesn't look right",
+      statusTooMany: "Too many requests — please wait a moment and try again",
+      statusError: "Could not send the status. Please try again.",
+      statusHelp: [
+        {
+          q: "Why is the status emailed instead of shown here?",
+          a: [
+            "An application's status is personal data. Shown on the page, anyone could type in somebody else's address and read it.",
+            "Emailing it means only the owner of that mailbox sees their own status — which is also why no confirmation code is needed.",
+          ],
+        },
+        {
+          q: "What does each status mean?",
+          a: [
+            "Under review — the association has your application and is checking the documents and proof of payment.",
+            "Approved — your application has been accepted.",
+            "Not approved — contact the association to ask why, or to apply again.",
+          ],
+        },
+        {
+          q: "The email never arrived. What now?",
+          a: [
+            "Check the spam or junk folder first.",
+            "Make sure the address you entered is the one on the application — an application made with a different address will not be found.",
+            "If it still hasn't arrived, please get in touch through the contact page.",
+          ],
+        },
+      ],
       feeUnit: "THB",
       feeUnknown: "—",
       typesEmpty: "Information coming soon",
