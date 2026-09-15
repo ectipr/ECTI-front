@@ -13,7 +13,7 @@ const dictionaries = {
       about: "เกี่ยวกับเรา",
       membership: "สมาชิก",
       events: "กิจกรรม",
-      publications: "งานวิชาการ",
+      publications: "วารสารและการประชุม",
       news: "ข่าวสาร",
       resources: "แหล่งข้อมูล",
       contact: "ติดต่อเรา",
@@ -331,7 +331,7 @@ const dictionaries = {
       socialTitle: "ติดตามเราได้ที่",
     },
     publications: {
-      title: "งานวิชาการ",
+      title: "วารสารและการประชุม",
       description: "วารสารวิชาการและงานประชุมวิชาการของสมาคม ECTI",
       journalsTitle: "วารสาร ECTI",
       journalEEC:"ECTI Transactions on Electrical Eng., Electronics, and Communications (ECTI-EEC)",
