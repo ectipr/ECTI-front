@@ -55,6 +55,16 @@ const EMAIL_FILTER_KEY = process.env.JOTFORM_EMAIL_FILTER_KEY?.trim() || "q8_xme
  */
 const STATUS_FIELD = process.env.JOTFORM_STATUS_FIELD?.trim() || "application_status";
 
+/**
+ * The form field the approval workflow stamps with the moment membership began
+ * — "Sep 20, 2026 18:26" as it shows in Jotform Tables. Read by field name for
+ * the same reason as STATUS_FIELD. The route turns this into the "member since"
+ * and "expires" lines by adding a year; an application with no value here (one
+ * still under review, or from before the field existed) simply gets neither
+ * line.
+ */
+const APPROVED_AT_FIELD = process.env.JOTFORM_APPROVED_AT_FIELD?.trim() || "approved_at";
+
 /** Plenty for "this person applied more than once"; nowhere near Jotform's 1000 cap. */
 const MAX_SUBMISSIONS = 50;
 
@@ -87,7 +97,18 @@ export type StatusLookup =
   /** Jotform could not be reached, or answered something unusable. */
   | { ok: false }
   | { ok: true; found: false }
-  | { ok: true; found: true; status: ApplicationStatus; submittedAt: string };
+  | {
+      ok: true;
+      found: true;
+      status: ApplicationStatus;
+      submittedAt: string;
+      /**
+       * When membership began, as a "YYYY-MM-DD HH:mm" wall clock, or undefined
+       * when APPROVED_AT_FIELD is empty or unparseable. Only meaningful for an
+       * accepted application; the route reads it only then.
+       */
+      approvedAt?: string;
+    };
 
 /**
  * What the status field is allowed to say.
@@ -115,6 +136,8 @@ interface Answer {
   name?: string;
   type?: string;
   answer?: unknown;
+  /** Jotform's own display string for the answer, when it sends one. */
+  prettyFormat?: unknown;
 }
 
 interface Submission {
@@ -179,6 +202,96 @@ function submissionStatus(submission: Submission): ApplicationStatus {
   }
 
   return "in_progress";
+}
+
+/** Zero-pad to two digits. */
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+/** A finite number out of a string or number, or null. */
+function toNumber(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string" && value.trim() !== "") {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+/**
+ * A Jotform date/time string reduced to "YYYY-MM-DD HH:mm", or null.
+ *
+ * Jotform's own "YYYY-MM-DD HH:mm[:ss]" (and the "T" variant) is read straight
+ * off with a regex, which also matches a date with no time — that becomes
+ * 00:00. Anything else Jotform might display, like "Sep 20, 2026 18:26", is
+ * handed to the engine's parser and read back in the server's own zone, so the
+ * same wall clock that went in comes out regardless of where this runs.
+ */
+function parseWallClockString(raw: string): string | null {
+  const text = raw.trim();
+  if (!text) return null;
+
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
+  if (iso) {
+    const [, y, mo, d, h = "00", mi = "00"] = iso;
+    return `${y}-${mo}-${d} ${h}:${mi}`;
+  }
+
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return null;
+  return (
+    `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ` +
+    `${pad2(date.getHours())}:${pad2(date.getMinutes())}`
+  );
+}
+
+/**
+ * A whole Jotform date/time answer reduced to a "YYYY-MM-DD HH:mm" wall clock,
+ * or null.
+ *
+ * The value arrives in more than one shape depending on whether it is a
+ * datetime question or something the approval workflow wrote: an object of
+ * components ({ year, month, day, hour, min }, sometimes carrying a whole
+ * "datetime" string instead), the answer as a plain string, or only the
+ * prettyFormat display. Each is tried in turn.
+ */
+function parseWallClock(answer: unknown, prettyFormat: unknown): string | null {
+  if (answer && typeof answer === "object" && !Array.isArray(answer)) {
+    const o = answer as Record<string, unknown>;
+    const year = toNumber(o.year);
+    const month = toNumber(o.month);
+    const day = toNumber(o.day);
+    if (year !== null && month !== null && day !== null) {
+      const hour = toNumber(o.hour) ?? 0;
+      const min = toNumber(o.min) ?? 0;
+      return `${year}-${pad2(month)}-${pad2(day)} ${pad2(hour)}:${pad2(min)}`;
+    }
+    if (typeof o.datetime === "string") return parseWallClockString(o.datetime);
+  }
+
+  const candidate =
+    typeof answer === "string" && answer.trim()
+      ? answer
+      : typeof prettyFormat === "string"
+        ? prettyFormat
+        : null;
+
+  return candidate ? parseWallClockString(candidate) : null;
+}
+
+/**
+ * The membership-start wall clock a submission carries in APPROVED_AT_FIELD, or
+ * null when the field is absent, empty or unparseable. Not a fixed-zone instant
+ * like created_at — it is the wall clock the workflow stamped, shown to the
+ * applicant as-is — so no timezone conversion is applied to it.
+ */
+function submissionApprovedAt(submission: Submission): string | null {
+  for (const answer of Object.values(submission.answers ?? {})) {
+    if (answer.name !== APPROVED_AT_FIELD) continue;
+    return parseWallClock(answer.answer, answer.prettyFormat);
+  }
+  return null;
 }
 
 /** `instant` as a "YYYY-MM-DD HH:mm:ss" wall clock in `timeZone`. */
@@ -323,5 +436,6 @@ export async function lookupApplicationStatus(email: string): Promise<StatusLook
     found: true,
     status: submissionStatus(latest),
     submittedAt: submissionDate(latest.created_at ?? ""),
+    approvedAt: submissionApprovedAt(latest) ?? undefined,
   };
 }

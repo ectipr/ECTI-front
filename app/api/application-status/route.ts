@@ -160,9 +160,14 @@ const COPY: Record<Locale, Record<MailKind, Copy>> = {
   },
 };
 
-const LABELS: Record<Locale, { submitted: string; contact: string; footer: string }> = {
+const LABELS: Record<
+  Locale,
+  { submitted: string; memberSince: string; expires: string; contact: string; footer: string }
+> = {
   th: {
     submitted: "วันที่ยื่นใบสมัคร",
+    memberSince: "วันที่เริ่มเป็นสมาชิก",
+    expires: "สมาชิกภาพหมดอายุ",
     contact: "ติดต่อสมาคม",
     footer:
       "อีเมลนี้ถูกส่งเพราะมีการขอตรวจสอบสถานะใบสมัครด้วยอีเมลนี้บนเว็บไซต์ ECTI " +
@@ -170,6 +175,8 @@ const LABELS: Record<Locale, { submitted: string; contact: string; footer: strin
   },
   en: {
     submitted: "Application date",
+    memberSince: "Member since",
+    expires: "Membership expires",
     contact: "Contact the association",
     footer:
       "This email was sent because a status check was requested for this address on the ECTI " +
@@ -223,6 +230,41 @@ function formatDate(isoDate: string, locale: Locale): string {
 }
 
 /**
+ * "2026-09-20 18:26" as a date and time a reader recognises.
+ *
+ * The stamp from lib/jotform.ts is a wall clock carrying no zone, so it is
+ * parsed and formatted as UTC — the same trick formatDate uses — which prints
+ * back the exact clock Jotform showed, on any deploy region. Falls back to the
+ * raw stamp if it somehow doesn't parse.
+ */
+function formatDateTime(wallClock: string, locale: Locale): string {
+  const date = new Date(`${wallClock.trim().replace(" ", "T")}:00Z`);
+  if (Number.isNaN(date.getTime())) return wallClock;
+
+  return new Intl.DateTimeFormat(locale === "th" ? "th-TH" : "en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+/**
+ * The same "YYYY-MM-DD HH:mm" wall clock a year on — the membership term —
+ * or null if it doesn't parse. A Feb-29 start rolls into the next March when
+ * formatted, which is close enough for an expiry date.
+ */
+function addOneYear(wallClock: string): string | null {
+  const m = wallClock.trim().match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+  if (!m) return null;
+  const [, y, mo, d, h, mi] = m;
+  return `${Number(y) + 1}-${mo}-${d} ${h}:${mi}`;
+}
+
+/**
  * The mail body.
  *
  * Nothing a visitor typed reaches this, and nothing out of the application
@@ -230,7 +272,12 @@ function formatDate(isoDate: string, locale: Locale): string {
  * that came from Jotform. That is what keeps this safe to send to an address
  * that might not be the applicant's.
  */
-function buildHtml(kind: MailKind, locale: Locale, submittedAt?: string): string {
+function buildHtml(
+  kind: MailKind,
+  locale: Locale,
+  submittedAt?: string,
+  approvedAt?: string
+): string {
   const copy = COPY[locale][kind];
   const labels = LABELS[locale];
   const membershipUrl = `${SITE_URL}/${locale}/membership#status`;
@@ -240,16 +287,28 @@ function buildHtml(kind: MailKind, locale: Locale, submittedAt?: string): string
     .map((text) => `<p style="margin:0 0 14px">${text}</p>`)
     .join("");
 
-  const dateLine = submittedAt
-    ? `<p style="margin:0 0 14px;color:#5b6b7c">${labels.submitted}: ` +
-      `<span style="color:#1c2733">${formatDate(submittedAt, locale)}</span></p>`
-    : "";
+  const infoLine = (label: string, value: string) =>
+    `<p style="margin:0 0 14px;color:#5b6b7c">${label}: ` +
+    `<span style="color:#1c2733">${value}</span></p>`;
+
+  const dateLine = submittedAt ? infoLine(labels.submitted, formatDate(submittedAt, locale)) : "";
+
+  // Only an approved application carries a membership term, and only then is the
+  // start stamp meaningful — see the note in lib/jotform.ts. The expiry is that
+  // start a year on; if either fails to parse the line is simply left out.
+  const expiresAt = kind === "accepted" && approvedAt ? addOneYear(approvedAt) : null;
+  const membershipLines =
+    kind === "accepted" && approvedAt
+      ? infoLine(labels.memberSince, formatDateTime(approvedAt, locale)) +
+        (expiresAt ? infoLine(labels.expires, formatDateTime(expiresAt, locale)) : "")
+      : "";
 
   return [
     '<div style="font-family:Tahoma,Arial,sans-serif;font-size:15px;line-height:1.8;color:#1c2733">',
     `<h1 style="font-size:19px;margin:0 0 16px">${copy.heading}</h1>`,
     paragraphs,
     dateLine,
+    membershipLines,
     `<p style="margin:0 0 14px"><a href="${contactUrl}" style="color:#1d4ed8">${labels.contact}</a></p>`,
     '<hr style="border:none;border-top:1px solid #dde3ea;margin:20px 0 12px">',
     `<p style="color:#5b6b7c;font-size:13px;margin:0 0 6px">${labels.footer}</p>`,
@@ -274,6 +333,7 @@ async function deliverStatus(email: string, locale: Locale) {
 
   const kind: MailKind = lookup.found ? lookup.status : "not_found";
   const submittedAt = lookup.found ? lookup.submittedAt : undefined;
+  const approvedAt = lookup.found ? lookup.approvedAt : undefined;
 
   let res: Response;
   try {
@@ -288,7 +348,7 @@ async function deliverStatus(email: string, locale: Locale) {
         sender: { name: SENDER_NAME, email: SENDER_EMAIL },
         to: [{ email }],
         subject: COPY[locale][kind].subject,
-        htmlContent: buildHtml(kind, locale, submittedAt),
+        htmlContent: buildHtml(kind, locale, submittedAt, approvedAt),
         ...(REPLY_TO ? { replyTo: { email: REPLY_TO } } : {}),
       }),
       cache: "no-store",
