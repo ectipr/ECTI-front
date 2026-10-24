@@ -22,6 +22,7 @@ export interface MemberType {
   type: string;
   eligibility: string;
   membership_fee: number | null;
+  membership_fee_3yr: number | null;
   entrance_fee: number | null;
   iconUrl: string | null;
 }
@@ -110,6 +111,7 @@ export async function fetchMemberTypes(locale: string): Promise<MemberType[]> {
     type: item.type || "",
     eligibility: item.eligibility || "",
     membership_fee: item.membership_fee ?? null,
+    membership_fee_3yr: item.membership_fee_3yr ?? null,
     entrance_fee: item.entrance_fee ?? null,
     iconUrl: item.icon?.url ? absoluteMediaUrl(item.icon.url) : null,
   }));

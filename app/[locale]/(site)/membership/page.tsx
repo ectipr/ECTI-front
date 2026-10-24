@@ -252,9 +252,17 @@ export default async function MembershipPage({ params }: PageProps) {
                             {type.eligibility}
                           </TableCell>
                           <TableCell className="px-4 py-4 text-center">
-                            <Badge variant="secondary" className="bg-secondary text-secondary-foreground">
-                              {formatFee(type.membership_fee)}
-                            </Badge>
+                            <div className="flex flex-col items-center gap-1.5">
+                              <Badge variant="secondary" className="bg-secondary text-secondary-foreground">
+                                {formatFee(type.membership_fee)}
+                                {type.membership_fee !== null && ` ${dict.membership.feePerYear}`}
+                              </Badge>
+                              {type.membership_fee_3yr !== null && (
+                                <Badge variant="secondary" className="bg-secondary text-secondary-foreground">
+                                  {formatFee(type.membership_fee_3yr)} {dict.membership.feePer3Years}
+                                </Badge>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="px-4 py-4 text-center">
                             <Badge variant="outline" className="border-primary/30 text-primary">
