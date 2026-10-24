@@ -95,10 +95,16 @@ export async function fetchHowToJoins(locale: string): Promise<HowtoJoin[]> {
     .sort((a: HowtoJoin, b: HowtoJoin) => a.order - b.order);
 }
 
+// Member types temporarily hidden from the site (still kept in the CMS, since
+// the seed would recreate them if deleted). Remove a key to show it again.
+const HIDDEN_MEMBER_TYPE_KEYS = new Set(["fellow", "honorary", "corporate"]);
+
 export async function fetchMemberTypes(locale: string): Promise<MemberType[]> {
   const data = await fetchAPI(`/api/member-types?populate=*&locale=${locale}`);
   if (!data || !Array.isArray(data)) return [];
-  return data.map((item: any) => ({
+  return data
+    .filter((item: any) => !HIDDEN_MEMBER_TYPE_KEYS.has(item.key))
+    .map((item: any) => ({
     id: item.id,
     key: item.key ?? null,
     type: item.type || "",
