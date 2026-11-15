@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ecti-front",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  // Lets the worker call itself (e.g. the self-fetch Next does for some
+  // internal routing) without that request leaving the Cloudflare network.
+  "services": [
+    { "binding": "WORKER_SELF_REFERENCE", "service": "ecti-front" }
+  ],
+  // ISR/data-cache payloads. Created with: npx wrangler r2 bucket create ecti-front-cache
+  "r2_buckets": [
+    {
+      "binding": "NEXT_INC_CACHE_R2_BUCKET",
+      "bucket_name": "ecti-front-cache"
+    }
+  ],
+  // Tracks which tags/paths were revalidated and when, for revalidatePath/revalidateTag.
+  // Created with: npx wrangler d1 create ecti-front-tag-cache
+  "d1_databases": [
+    {
+      "binding": "NEXT_TAG_CACHE_D1",
+      "database_name": "ecti-front-tag-cache",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+    }
+  ]
+}

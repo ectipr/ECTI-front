@@ -85,6 +85,11 @@ const TRUSTED_PROXY_HOPS = Math.max(1, Number(process.env.TRUSTED_PROXY_HOPS) ||
  * from the right instead means the caller can only prepend entries we skip past.
  */
 export function clientIp(request: Request): string {
+  // Cloudflare sets this at its edge from the actual TCP connection — a caller
+  // cannot override it, so it's trusted outright when present.
+  const cloudflare = request.headers.get("cf-connecting-ip");
+  if (cloudflare) return cloudflare.trim() || UNKNOWN;
+
   // Vercel strips any caller-supplied copy of this header before the function
   // sees it, so where it exists it can be taken at face value.
   const vercel = request.headers.get("x-vercel-forwarded-for");

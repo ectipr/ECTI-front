@@ -10,6 +10,7 @@ node_modules/
 .env*.local
 !.env.example
 .vercel
+.dev.vars
 
 # This project is pnpm-only — see packageManager in package.json. An npm
 # lockfile here would go unmaintained and quietly resolve a different
@@ -28,6 +29,8 @@ dist/
 build/
 .cache/
 .tmp/
+.open-next/
+.wrangler/
 
 # editor
 .vscode/

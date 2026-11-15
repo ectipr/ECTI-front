@@ -46,14 +46,14 @@ const imgOrigins = [...new Set([cmsOrigin, mediaOrigin].filter(Boolean))];
  */
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"} https://va.vercel-scripts.com`,
+  `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
   // Tailwind and the Radix components both set styles inline.
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob:${imgOrigins.map((origin) => ` ${origin}`).join("")}`,
   // next/font/google downloads the fonts at build time and serves them from
   // our own origin, so no font CDN belongs here.
   "font-src 'self' data:",
-  `connect-src 'self'${cmsOrigin ? ` ${cmsOrigin}` : ""} https://va.vercel-scripts.com https://vitals.vercel-insights.com`,
+  `connect-src 'self'${cmsOrigin ? ` ${cmsOrigin}` : ""}`,
   // The contact page embeds the association's location as a Google Maps
   // iframe. There is no frame-src otherwise, so it falls back to default-src
   // 'self' and the browser refuses to render the embed at all.
