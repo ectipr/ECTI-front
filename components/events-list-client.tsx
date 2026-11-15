@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { ECTIEvent, EventStatus, EventType } from "@/lib/events-data";
+import type { ECTIEvent, EventType } from "@/lib/events-data";
 import type { Dictionary, Locale } from "@/lib/i18n";
 import { safeUrl } from "@/lib/safe-url";
 
@@ -32,36 +32,6 @@ interface EventsListClientProps {
   events: ECTIEvent[];
   years: string[];
   locations: string[];
-}
-
-const STATUS_ORDER: Record<EventStatus, number> = {
-  open: 0,
-  register: 1,
-  upcoming: 2,
-  finished: 3,
-};
-
-function getStatusLabel(status: EventStatus, dict: Dictionary): string {
-  const map: Record<EventStatus, string> = {
-    open: dict.events.statusCfp,
-    register: dict.events.statusRegOpen,
-    upcoming: dict.events.statusUpcoming,
-    finished: dict.events.statusPast,
-  };
-  return map[status];
-}
-
-function getStatusStyle(status: EventStatus): string {
-  switch (status) {
-    case "open":
-      return "bg-accent text-accent-foreground";
-    case "register":
-      return "bg-primary text-primary-foreground";
-    case "upcoming":
-      return "bg-chart-4 text-primary-foreground";
-    case "finished":
-      return "bg-muted text-muted-foreground";
-  }
 }
 
 function getTypeLabel(type: EventType, dict: Dictionary): string {
@@ -97,7 +67,6 @@ export function EventsListClient({
   const [search, setSearch] = useState("");
   const [yearFilter, setYearFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
 
   const isTh = locale === "th";
@@ -121,32 +90,29 @@ export function EventsListClient({
     if (typeFilter !== "all") {
       result = result.filter((e) => e.type === typeFilter);
     }
-    if (statusFilter !== "all") {
-      result = result.filter((e) => e.status === statusFilter);
-    }
     if (locationFilter !== "all") {
       result = result.filter(
         (e) => e.location === locationFilter
       );
     }
 
-    result.sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
+    // Newest year first. Array.prototype.sort is stable, so events sharing a
+    // year keep the start-date order the API already put them in.
+    result.sort((a, b) => Number(b.year) - Number(a.year));
 
     return result;
-  }, [events, search, yearFilter, typeFilter, statusFilter, locationFilter, isTh]);
+  }, [events, search, yearFilter, typeFilter, locationFilter, isTh]);
 
   const hasActiveFilters =
     search.trim() !== "" ||
     yearFilter !== "all" ||
     typeFilter !== "all" ||
-    statusFilter !== "all" ||
     locationFilter !== "all";
 
   function clearFilters() {
     setSearch("");
     setYearFilter("all");
     setTypeFilter("all");
-    setStatusFilter("all");
     setLocationFilter("all");
   }
 
@@ -206,27 +172,6 @@ export function EventsListClient({
             </SelectContent>
           </Select>
 
-          {/* Status */}
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[210px]">
-              <FilterValue
-                label={dict.events.filterStatus}
-                value={
-                  statusFilter === "all"
-                    ? dict.events.filterAll
-                    : getStatusLabel(statusFilter as EventStatus, dict)
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{dict.events.filterAll}</SelectItem>
-              <SelectItem value="open">{dict.events.statusCfp}</SelectItem>
-              <SelectItem value="register">{dict.events.statusRegOpen}</SelectItem>
-              <SelectItem value="upcoming">{dict.events.statusUpcoming}</SelectItem>
-              <SelectItem value="finished">{dict.events.statusPast}</SelectItem>
-            </SelectContent>
-          </Select>
-
           {/* Location */}
           <Select value={locationFilter} onValueChange={setLocationFilter}>
             <SelectTrigger className="w-[280px]">
@@ -280,16 +225,6 @@ export function EventsListClient({
                 onClick={() => setTypeFilter("all")}
               >
                 {getTypeLabel(typeFilter as EventType, dict)}
-                <X className="h-3 w-3" />
-              </Badge>
-            )}
-            {statusFilter !== "all" && (
-              <Badge
-                variant="secondary"
-                className="cursor-pointer gap-1 pr-1.5"
-                onClick={() => setStatusFilter("all")}
-              >
-                {getStatusLabel(statusFilter as EventStatus, dict)}
                 <X className="h-3 w-3" />
               </Badge>
             )}
@@ -408,9 +343,6 @@ function EventCard({
               <h3 className="text-lg font-semibold text-card-foreground">
                 {event.title}
               </h3>
-              <Badge className={getStatusStyle(event.status)}>
-                {getStatusLabel(event.status, dict)}
-              </Badge>
               <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
                 {getTypeLabel(event.type, dict)}
               </Badge>

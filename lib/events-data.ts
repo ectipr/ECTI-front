@@ -1,6 +1,5 @@
 import { CMS_REVALIDATE_SECONDS } from "@/lib/cache";
 import { fetchAllPages } from "@/lib/strapi-pages";
-export type EventStatus = "open" | "register" | "upcoming" | "finished";
 export type EventType = "conference" | "workshop" | "seminar";
 
 const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:1337").replace(/\/+$/, "");
@@ -27,7 +26,6 @@ export interface ECTIEvent {
   location: string;
   description: string;
   overview: string;
-  status: EventStatus;
   type: EventType;
   year: string;
   deadlines: EventDeadline[];
@@ -66,7 +64,6 @@ export async function fetchEventBySlug(slug: string, locale: string) {
     location: attr.location ?? "",
     description: attr.description?.[0]?.children?.[0]?.text || "",
     overview: "",
-    status: attr.event_status,
     type: attr.type,
     year: attr.year,
     deadlines:
@@ -83,7 +80,7 @@ export async function fetchEventBySlug(slug: string, locale: string) {
 
 // func fetch
 // Ordered newest-first here rather than in the client: EventsListClient re-sorts
-// by status with a stable sort, so this date order survives within each status group.
+// by year with a stable sort, so this date order survives within each year.
 export async function fetchEventsFromAPI(locale: string): Promise<ECTIEvent[]> {
   // The legacy conference import took this collection past Strapi's default
   // page of 25, so reading one page silently lost half the history — and the
@@ -105,7 +102,6 @@ export async function fetchEventsFromAPI(locale: string): Promise<ECTIEvent[]> {
       location: attr.location ?? "",
       description: attr.description?.[0]?.children?.[0]?.text || "",
       overview: "",
-      status: attr.event_status,
       type: attr.type,
       year: attr.year,
       deadlines:
@@ -194,7 +190,6 @@ export const events: ECTIEvent[] = [
       "การประชุมวิชาการนานาชาติด้านวิศวกรรมไฟฟ้า/อิเล็กทรอนิกส์ คอมพิวเตอร์ โทรคมนาคม และสารสนเทศ ครั้งที่ 23",
     overview:
       "ECTI-CON 2026 เป็นการประชุมวิชาการนานาชาติประจำปีที่จัดโดยสมาคม ECTI เปิดรับบทความวิจัยคุณภาพสูงในสาขาวิศวกรรมไฟฟ้า อิเล็กทรอนิกส์ คอมพิวเตอร์ โทรคมนาคม และสารสนเทศ โดยบทความที่ได้รับคัดเลือกจะถูกตีพิมพ์ใน IEEE Xplore และวารสาร ECTI Transactions",
-    status: "open",
     type: "conference",
     year: "2026",
     deadlines: [
@@ -244,7 +239,6 @@ export const events: ECTIEvent[] = [
       "การประชุมวิชาการ ECTI Conference on Application Research and Development ครั้งที่ 5",
     overview:
       "ECTI-CARD 2026 เป็นเวทีสำหรับนำเสนอผลงานวิจัยประยุกต์และการพัฒนาเทคโนโลยีในสาขาที่เกี่ยวข้อง เน้นการเชื่อมโยงผลงานวิจัยสู่การใช้งานจริง",
-    status: "register",
     type: "conference",
     year: "2026",
     deadlines: [
@@ -285,7 +279,6 @@ export const events: ECTIEvent[] = [
       "สัมมนาเชิงปฏิบัติการเกี่ยวกับปัญญาประดิษฐ์และอินเทอร์เน็ตในทุกสิ่ง สำหรับสมาชิกสมาคม",
     overview:
       "สัมมนาเชิงปฏิบัติการ 1 วัน ครอบคลุมพื้นฐาน AI/ML, การใช้ TensorFlow และ PyTorch, การพัฒนาระบบ IoT ด้วย ESP32 และ Raspberry Pi พร้อมโปรเจกต์จริง",
-    status: "finished",
     type: "workshop",
     year: "2026",
     deadlines: [
@@ -316,7 +309,6 @@ export const events: ECTIEvent[] = [
       "การประชุมวิชาการนานาชาติ ECTI ครั้งที่ 22 ณ กรุงเทพมหานคร",
     overview:
       "ECTI-CON 2025 ประสบความสำเร็จด้วยผู้เข้าร่วมกว่า 500 คนจาก 15 ประเทศ มีการนำเสนอบทความวิจัยกว่า 200 บทความ",
-    status: "finished",
     type: "conference",
     year: "2025",
     deadlines: [],
@@ -345,7 +337,6 @@ export const events: ECTIEvent[] = [
       "สัมมนาพิเศษเรื่องการประมวลผลควอนตัมและผลกระทบต่อวงการวิศวกรรม",
     overview:
       "สัมมนาครึ่งวันโดยผู้เชี่ยวชาญด้านการประมวลผลควอนตัมจากมหาวิทยาลัยชั้นนำ ครอบคลุมทฤษฎีพื้นฐาน, อัลกอริทึมควอนตัม, และการประยุกต์ใช้งานจริง",
-    status: "finished",
     type: "seminar",
     year: "2025",
     deadlines: [],
@@ -369,7 +360,6 @@ export const events: ECTIEvent[] = [
       "การประชุมวิชาการด้านวิทยาการข้อมูลและการสื่อสาร ครั้งที่ 3",
     overview:
       "ECTI-DACON 2026 เป็นเวทีการประชุมวิชาการที่เน้นงานวิจัยด้านวิทยาการข้อมูล การเรียนรู้ของเครื่อง และระบบสื่อสารสมัยใหม่",
-    status: "upcoming",
     type: "conference",
     year: "2026",
     deadlines: [

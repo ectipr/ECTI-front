@@ -20,7 +20,8 @@ import {
   CalendarCheck,
 } from "lucide-react";
 import { events, getEventBySlug, fetchEventBySlug, fetchEventsFromAPI } from "@/lib/events-data";
-import type { ECTIEvent, EventStatus } from "@/lib/events-data";
+import type { ECTIEvent } from "@/lib/events-data";
+import { safeUrl } from "@/lib/safe-url";
 
 interface PageProps {
   params: Promise<{ locale: string; slug: string }>;
@@ -88,29 +89,6 @@ export async function generateMetadata({ params }: PageProps) {
   };
 }
 
-function getStatusLabel(status: EventStatus, dict: ReturnType<typeof getDictionary>): string {
-  const map: Record<EventStatus, string> = {
-    open: dict.events.statusCfp,
-    register: dict.events.statusRegOpen,
-    upcoming: dict.events.statusUpcoming,
-    finished: dict.events.statusPast,
-  };
-  return map[status];
-}
-
-function getStatusStyle(status: EventStatus): string {
-  switch (status) {
-    case "open":
-      return "bg-accent text-accent-foreground";
-    case "register":
-      return "bg-primary text-primary-foreground";
-    case "upcoming":
-      return "bg-chart-4 text-primary-foreground";
-    case "finished":
-      return "bg-muted text-muted-foreground";
-  }
-}
-
 export default async function EventDetailPage({ params }: PageProps) {
   const { locale, slug } = await params;
   if (!isValidLocale(locale)) notFound();
@@ -123,6 +101,11 @@ export default async function EventDetailPage({ params }: PageProps) {
   if (!event) notFound();
 
   const dict = getDictionary(locale as Locale);
+
+  // Editor-supplied and unvalidated in the Strapi schema —
+  // activity.register_url has no regex on it, so the scheme is checked here,
+  // the same way the list does it.
+  const registerUrl = safeUrl(event.register_url);
 
   const title = event.title;
   const date = event.date;
@@ -166,9 +149,6 @@ export default async function EventDetailPage({ params }: PageProps) {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap items-center gap-2 mb-4">
-                  <Badge className={getStatusStyle(event.status)}>
-                    {getStatusLabel(event.status, dict)}
-                  </Badge>
                   <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <CalendarDays className="h-4 w-4 text-primary" />
                     {date}
@@ -325,23 +305,23 @@ export default async function EventDetailPage({ params }: PageProps) {
               </CardContent>
             </Card>
 
-            {/* Registration CTA */}
-            {event.status !== "finished" && (
-              <div className="flex flex-col gap-3">
-                {event.status === "open" && (
-                  <Button
-                    size="lg"
-                    className="w-full gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
-                  >
-                    <FileText className="h-4 w-4" />
-                    {dict.events.btnSubmitPaper}
-                  </Button>
-                )}
-                <Button size="lg" className="w-full gap-2">
+            {/* Registration CTA — shown when the event has somewhere to send
+                people. This used to key off the status field: anything not
+                marked "finished" got the buttons, which meant a conference from
+                2004 showed a Register button the day someone forgot to change
+                its status, and the buttons had no href on them in any case, so
+                every one of them did nothing when clicked.
+
+                The link is what decides now, and the button is a link. An event
+                with no register_url — most of the older ones, whose sites are
+                gone — simply has no CTA. */}
+            {registerUrl && (
+              <Button asChild size="lg" className="w-full gap-2">
+                <a href={registerUrl} target="_blank" rel="noopener noreferrer">
                   <CalendarCheck className="h-4 w-4" />
                   {dict.events.btnRegister}
-                </Button>
-              </div>
+                </a>
+              </Button>
             )}
           </div>
         </div>

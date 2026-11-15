@@ -162,25 +162,54 @@ const COPY: Record<Locale, Record<MailKind, Copy>> = {
 
 const LABELS: Record<
   Locale,
-  { submitted: string; memberSince: string; expires: string; contact: string; footer: string }
+  {
+    eyebrow: string;
+    badge: Record<MailKind, string>;
+    submitted: string;
+    memberSince: string;
+    expires: string;
+    contact: string;
+    org: string;
+    footer: string;
+    logoAlt: string;
+  }
 > = {
   th: {
+    eyebrow: "สถานะใบสมัครสมาชิก",
+    badge: {
+      in_progress: "กำลังพิจารณา",
+      accepted: "อนุมัติแล้ว",
+      denied: "ไม่ผ่านการพิจารณา",
+      not_found: "ไม่พบใบสมัคร",
+    },
     submitted: "วันที่ยื่นใบสมัคร",
     memberSince: "วันที่เริ่มเป็นสมาชิก",
-    expires: "สมาชิกภาพหมดอายุ",
+    expires: "วันหมดอายุสมาชิก",
     contact: "ติดต่อสมาคม",
+    org: "สมาคมวิชาการไฟฟ้า อิเล็กทรอนิกส์ คอมพิวเตอร์ โทรคมนาคม และสารสนเทศ",
     footer:
       "อีเมลนี้ถูกส่งเพราะมีการขอตรวจสอบสถานะใบสมัครด้วยอีเมลนี้บนเว็บไซต์ ECTI " +
       "หากคุณไม่ได้เป็นผู้ขอ ไม่ต้องดำเนินการใด ๆ",
+    logoAlt: "สมาคม ECTI",
   },
   en: {
+    eyebrow: "Membership application status",
+    badge: {
+      in_progress: "Under review",
+      accepted: "Approved",
+      denied: "Not approved",
+      not_found: "No application found",
+    },
     submitted: "Application date",
     memberSince: "Member since",
     expires: "Membership expires",
     contact: "Contact the association",
+    org:
+      "Electrical Engineering/Electronics, Computer, Telecommunications and Information Technology Association",
     footer:
       "This email was sent because a status check was requested for this address on the ECTI " +
       "website. If that was not you, no action is needed.",
+    logoAlt: "ECTI Association",
   },
 };
 
@@ -264,11 +293,32 @@ function addOneYear(wallClock: string): string | null {
   return `${Number(y) + 1}-${mo}-${d} ${h}:${mi}`;
 }
 
+/** Sampled from the logo — the same palette as the newsletter mail in ECTI-cms. */
+const BRAND_BLUE = "#0b3d91";
+const BRAND_RED = "#aa1e1e";
+const INK = "#16202b";
+const INK_SOFT = "#5a6875";
+const RULE = "#dde4ec";
+const GROUND = "#eef1f5";
+const FONT = "'Noto Sans Thai',Tahoma,'Helvetica Neue',Arial,sans-serif";
+
+/** Badge colours per outcome: text on a pale fill of the same hue. */
+const BADGE: Record<MailKind, { fg: string; bg: string }> = {
+  in_progress: { fg: "#8a5a00", bg: "#fff4d6" },
+  accepted: { fg: "#17643a", bg: "#e3f5ea" },
+  denied: { fg: BRAND_RED, bg: "#fbe7e7" },
+  not_found: { fg: INK_SOFT, bg: "#edf0f4" },
+};
+
 /**
  * The mail body.
  *
- * Nothing a visitor typed reaches this, and nothing out of the application
- * does either — the copy is fixed, and the only value interpolated is a date
+ * Built like the newsletter mail in ECTI-cms (src/newsletter.ts): tables and
+ * inline styles only, because Outlook renders through Word and Gmail strips
+ * <style> blocks. The logo is an absolute URL on the public site, and every
+ * layer under it is styled so the mail still reads when images are blocked.
+ *
+ * Everything in it is fixed copy plus dates the route formatted itself; nothing
  * that came from Jotform. That is what keeps this safe to send to an address
  * that might not be the applicant's.
  */
@@ -280,40 +330,93 @@ function buildHtml(
 ): string {
   const copy = COPY[locale][kind];
   const labels = LABELS[locale];
+  const badge = BADGE[kind];
   const membershipUrl = `${SITE_URL}/${locale}/membership#status`;
   const contactUrl = `${SITE_URL}/${locale}/contact`;
+  const logoUrl = `${SITE_URL}/images/ecti-logo-email.png`;
 
   const paragraphs = copy.body
-    .map((text) => `<p style="margin:0 0 14px">${text}</p>`)
+    .map(
+      (text) =>
+        `<p style="margin:0 0 14px;font-size:15px;line-height:1.75;color:${INK_SOFT}">${text}</p>`
+    )
     .join("");
-
-  const infoLine = (label: string, value: string) =>
-    `<p style="margin:0 0 14px;color:#5b6b7c">${label}: ` +
-    `<span style="color:#1c2733">${value}</span></p>`;
-
-  const dateLine = submittedAt ? infoLine(labels.submitted, formatDate(submittedAt, locale)) : "";
 
   // Only an approved application carries a membership term, and only then is the
   // start stamp meaningful — see the note in lib/jotform.ts. The expiry is that
-  // start a year on; if either fails to parse the line is simply left out.
+  // start a year on; if either fails to parse the row is simply left out.
   const expiresAt = kind === "accepted" && approvedAt ? addOneYear(approvedAt) : null;
-  const membershipLines =
-    kind === "accepted" && approvedAt
-      ? infoLine(labels.memberSince, formatDateTime(approvedAt, locale)) +
-        (expiresAt ? infoLine(labels.expires, formatDateTime(expiresAt, locale)) : "")
-      : "";
+  const rows: [label: string, value: string, highlight: boolean][] = [];
+  if (submittedAt) rows.push([labels.submitted, formatDate(submittedAt, locale), false]);
+  if (kind === "accepted" && approvedAt) {
+    rows.push([labels.memberSince, formatDateTime(approvedAt, locale), false]);
+    if (expiresAt) rows.push([labels.expires, formatDateTime(expiresAt, locale), true]);
+  }
+
+  const details = rows.length
+    ? [
+        `<tr><td style="padding:6px 32px 22px">`,
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f6f8fb;border:1px solid ${RULE};border-radius:8px">`,
+        rows
+          .map(
+            ([label, value, highlight], i) =>
+              `<tr><td style="padding:12px 18px;${i ? `border-top:1px solid ${RULE};` : ""}font-family:${FONT}">` +
+              `<p style="margin:0;font-size:12px;line-height:1.5;color:${INK_SOFT}">${label}</p>` +
+              `<p style="margin:2px 0 0;font-size:15px;line-height:1.5;font-weight:700;color:${highlight ? BRAND_BLUE : INK}">${value}</p>` +
+              "</td></tr>"
+          )
+          .join(""),
+        "</table>",
+        "</td></tr>",
+      ].join("")
+    : "";
 
   return [
-    '<div style="font-family:Tahoma,Arial,sans-serif;font-size:15px;line-height:1.8;color:#1c2733">',
-    `<h1 style="font-size:19px;margin:0 0 16px">${copy.heading}</h1>`,
+    // Preheader: the line a client shows next to the subject in the inbox list.
+    `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">${copy.heading}</div>`,
+
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${GROUND};margin:0;padding:24px 12px">`,
+    '<tr><td align="center">',
+    `<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:10px;overflow:hidden">`,
+
+    // ── masthead ──────────────────────────────────────────────────────
+    `<tr><td align="center" style="padding:28px 32px 22px">`,
+    `<a href="${SITE_URL}/${locale}" style="text-decoration:none">`,
+    `<img src="${logoUrl}" width="260" alt="${labels.logoAlt}" style="display:block;width:260px;max-width:65%;height:auto;border:0;font-family:${FONT};font-size:20px;font-weight:700;color:${BRAND_BLUE}">`,
+    "</a>",
+    "</td></tr>",
+    `<tr><td style="padding:0 32px"><div style="height:3px;background:${BRAND_RED};border-radius:2px"></div></td></tr>`,
+
+    // ── body ──────────────────────────────────────────────────────────
+    `<tr><td style="padding:26px 32px 0;font-family:${FONT}">`,
+    // Tracking only in English: spaced-out Thai letters break apart visually.
+    `<p style="margin:0 0 12px;font-size:12px;${locale === "en" ? "letter-spacing:.09em;text-transform:uppercase;" : ""}color:${BRAND_BLUE};font-weight:700">${labels.eyebrow}</p>`,
+    `<p style="margin:0 0 14px"><span style="display:inline-block;padding:4px 12px;border-radius:999px;background:${badge.bg};color:${badge.fg};font-size:13px;font-weight:700;line-height:1.5">${labels.badge[kind]}</span></p>`,
+    `<h1 style="margin:0 0 14px;font-size:23px;line-height:1.35;color:${INK};font-weight:700">${copy.heading}</h1>`,
     paragraphs,
-    dateLine,
-    membershipLines,
-    `<p style="margin:0 0 14px"><a href="${contactUrl}" style="color:#1d4ed8">${labels.contact}</a></p>`,
-    '<hr style="border:none;border-top:1px solid #dde3ea;margin:20px 0 12px">',
-    `<p style="color:#5b6b7c;font-size:13px;margin:0 0 6px">${labels.footer}</p>`,
-    `<p style="color:#5b6b7c;font-size:13px;margin:0"><a href="${membershipUrl}" style="color:#5b6b7c">${membershipUrl}</a></p>`,
-    "</div>",
+    "</td></tr>",
+
+    details,
+
+    // ── call to action ────────────────────────────────────────────────
+    // A table rather than a padded <a>: Outlook ignores padding on an inline
+    // element, which would collapse the button into a bare blue link.
+    `<tr><td style="padding:4px 32px 30px">`,
+    '<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>',
+    `<td align="center" style="background:${BRAND_BLUE};border-radius:6px">`,
+    `<a href="${contactUrl}" style="display:inline-block;padding:12px 28px;font-family:${FONT};font-size:15px;font-weight:700;color:#ffffff;text-decoration:none">${labels.contact}</a>`,
+    "</td></tr></table>",
+    "</td></tr>",
+
+    // ── footer ────────────────────────────────────────────────────────
+    `<tr><td style="padding:0 32px"><div style="height:1px;background:${RULE}"></div></td></tr>`,
+    `<tr><td style="padding:20px 32px 28px;font-family:${FONT}">`,
+    `<p style="margin:0 0 6px;font-size:13px;line-height:1.6;color:${INK};font-weight:700">${labels.org}</p>`,
+    `<p style="margin:0 0 6px;font-size:12px;line-height:1.6;color:${INK_SOFT}">${labels.footer}</p>`,
+    `<p style="margin:0;font-size:12px;line-height:1.6"><a href="${membershipUrl}" style="color:${INK_SOFT}">${membershipUrl}</a></p>`,
+    "</td></tr>",
+
+    "</table></td></tr></table>",
   ].join("");
 }
 

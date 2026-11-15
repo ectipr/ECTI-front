@@ -11,10 +11,11 @@ import { fetchEventsFromAPI } from "@/lib/events-data";
 // Strapi now calls /api/revalidate on publish — so the opt-out only cost us a
 // serverless render per visitor for a page every visitor sees identically.
 //
-// Nothing on this page varies per request: `event_status` is a field the editor
-// sets in Strapi rather than something derived from today's date, and the
-// year/location filtering all happens in EventsListClient. So it renders once
-// and is served as a file until an editor changes something.
+// Nothing on this page varies per request: the list is ordered by year and the
+// filtering all happens in EventsListClient. So it renders once and is served
+// as a file until an editor changes something. This was already true when the
+// status field existed — it was a value an editor set, not one derived from
+// today — and removing it has not changed that.
 //
 // If events stop updating after a publish, the webhook is what to check.
 // Putting force-dynamic back would hide that, not fix it.

@@ -46,7 +46,8 @@ export default async function HomePage({ params }: PageProps) {
   return (
     <>
       <HeroSection locale={locale as Locale} dict={dict} />
-      <StatsSection dict={dict} />
+      {/* Hidden until the association confirms the real numbers. */}
+      {/*<StatsSection dict={dict} />*/}
       <FeaturedUpdatesSection locale={locale as Locale} dict={dict} />
       <ActivitiesSection dict={dict} />
       <FeaturedEventSection locale={locale as Locale} dict={dict} />
